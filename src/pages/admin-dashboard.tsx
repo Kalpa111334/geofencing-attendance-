@@ -3,10 +3,22 @@ import { useRouter } from "next/router";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FaUserClock, FaMapMarkerAlt, FaSignOutAlt, FaUser, FaUserEdit, FaUsers } from "react-icons/fa";
+import { 
+  FaUserClock, 
+  FaMapMarkerAlt, 
+  FaSignOutAlt, 
+  FaUser, 
+  FaUserEdit, 
+  FaUsers, 
+  FaChartBar, 
+  FaTachometerAlt 
+} from "react-icons/fa";
 import AttendanceCheckInOut from "@/components/AttendanceCheckInOut";
 import LocationManagement from "@/components/LocationManagement";
 import UserProfile from "@/components/UserProfile";
+import UserManagement from "@/components/UserManagement";
+import AttendanceReports from "@/components/AttendanceReports";
+import DashboardOverview from "@/components/DashboardOverview";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -46,7 +58,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-primary/10">
+      <header className="border-b bg-primary/10 sticky top-0 z-10">
         <div className="flex h-16 items-center px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
             <FaUserClock className="h-6 w-6 text-primary" />
@@ -80,24 +92,48 @@ export default function AdminDashboard() {
             </p>
           </div>
 
-          <Tabs defaultValue="locations" className="space-y-4">
-            <TabsList>
+          <Tabs defaultValue="overview" className="space-y-4">
+            <TabsList className="grid grid-cols-3 md:grid-cols-6 lg:w-auto">
+              <TabsTrigger value="overview">
+                <FaTachometerAlt className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Overview</span>
+              </TabsTrigger>
+              <TabsTrigger value="users">
+                <FaUsers className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Users</span>
+              </TabsTrigger>
               <TabsTrigger value="locations">
                 <FaMapMarkerAlt className="mr-2 h-4 w-4" />
-                Locations
+                <span className="hidden sm:inline">Locations</span>
+              </TabsTrigger>
+              <TabsTrigger value="reports">
+                <FaChartBar className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Reports</span>
               </TabsTrigger>
               <TabsTrigger value="attendance">
                 <FaUserClock className="mr-2 h-4 w-4" />
-                My Attendance
+                <span className="hidden sm:inline">My Attendance</span>
               </TabsTrigger>
               <TabsTrigger value="profile">
                 <FaUserEdit className="mr-2 h-4 w-4" />
-                Profile
+                <span className="hidden sm:inline">Profile</span>
               </TabsTrigger>
             </TabsList>
             
+            <TabsContent value="overview" className="space-y-4">
+              <DashboardOverview />
+            </TabsContent>
+            
+            <TabsContent value="users" className="space-y-4">
+              <UserManagement />
+            </TabsContent>
+            
             <TabsContent value="locations" className="space-y-4">
               <LocationManagement />
+            </TabsContent>
+            
+            <TabsContent value="reports" className="space-y-4">
+              <AttendanceReports />
             </TabsContent>
             
             <TabsContent value="attendance" className="space-y-4">

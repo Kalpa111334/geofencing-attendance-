@@ -1,0 +1,280 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/components/ui/use-toast';
+import { 
+  FaUserCheck, 
+  FaUserClock, 
+  FaMapMarkerAlt, 
+  FaUsers, 
+  FaSpinner,
+  FaExclamationTriangle,
+  FaCalendarAlt
+} from 'react-icons/fa';
+import { format } from 'date-fns';
+
+interface DashboardStats {
+  totalUsers: number;
+  activeUsers: number;
+  totalLocations: number;
+  todayAttendance: {
+    present: number;
+    late: number;
+    absent: number;
+    total: number;
+  };
+  recentCheckIns: Array<{
+    id: string;
+    userName: string;
+    locationName: string;
+    time: string;
+  }>;
+}
+
+const DashboardOverview: React.FC = () => {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const { toast } = useToast();
+
+  // Fetch dashboard stats on component mount
+  useEffect(() => {
+    fetchDashboardStats();
+  }, []);
+
+  // Fetch dashboard stats from API
+  const fetchDashboardStats = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/dashboard');
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard statistics');
+      }
+      const data = await response.json();
+      setStats(data);
+    } catch (error) {
+      console.error('Error fetching dashboard statistics:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to fetch dashboard statistics',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format time for display
+  const formatTime = (timeString: string) => {
+    return format(new Date(timeString), 'h:mm a');
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <FaSpinner className="animate-spin h-8 w-8 text-primary" />
+      </div>
+    );
+  }
+
+  // If we don't have stats yet, show a placeholder
+  if (!stats) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Dashboard Overview</CardTitle>
+            <CardDescription>
+              No data available at the moment
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-center items-center py-8">
+              <FaExclamationTriangle className="h-8 w-8 text-yellow-500" />
+              <span className="ml-2 text-muted-foreground">Unable to load dashboard data</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Today's date */}
+      <div className="flex items-center space-x-2">
+        <FaCalendarAlt className="h-5 w-5 text-primary" />
+        <h2 className="text-xl font-semibold">
+          {format(new Date(), 'EEEE, MMMM d, yyyy')}
+        </h2>
+      </div>
+
+      {/* Stats cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Employees</p>
+                <h3 className="text-2xl font-bold">{stats.totalUsers}</h3>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <FaUsers className="h-6 w-6 text-primary" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Active Today</p>
+                <h3 className="text-2xl font-bold">{stats.activeUsers}</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {Math.round((stats.activeUsers / stats.totalUsers) * 100)}% of total
+                </p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                <FaUserCheck className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Locations</p>
+                <h3 className="text-2xl font-bold">{stats.totalLocations}</h3>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                <FaMapMarkerAlt className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Attendance Rate</p>
+                <h3 className="text-2xl font-bold">
+                  {stats.todayAttendance.total > 0 
+                    ? Math.round(((stats.todayAttendance.present + stats.todayAttendance.late) / stats.todayAttendance.total) * 100) 
+                    : 0}%
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {stats.todayAttendance.present} present, {stats.todayAttendance.late} late
+                </p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center">
+                <FaUserClock className="h-6 w-6 text-yellow-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Attendance breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Today's Attendance</CardTitle>
+          <CardDescription>
+            Breakdown of employee attendance status
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="flex flex-col items-center p-4 bg-green-50 rounded-lg">
+                <div className="flex items-center justify-center h-10 w-10 rounded-full bg-green-100 mb-2">
+                  <FaUserCheck className="h-5 w-5 text-green-600" />
+                </div>
+                <span className="text-xl font-bold">{stats.todayAttendance.present}</span>
+                <span className="text-sm text-muted-foreground">Present</span>
+              </div>
+              
+              <div className="flex flex-col items-center p-4 bg-yellow-50 rounded-lg">
+                <div className="flex items-center justify-center h-10 w-10 rounded-full bg-yellow-100 mb-2">
+                  <FaUserClock className="h-5 w-5 text-yellow-600" />
+                </div>
+                <span className="text-xl font-bold">{stats.todayAttendance.late}</span>
+                <span className="text-sm text-muted-foreground">Late</span>
+              </div>
+              
+              <div className="flex flex-col items-center p-4 bg-red-50 rounded-lg">
+                <div className="flex items-center justify-center h-10 w-10 rounded-full bg-red-100 mb-2">
+                  <FaExclamationTriangle className="h-5 w-5 text-red-600" />
+                </div>
+                <span className="text-xl font-bold">{stats.todayAttendance.absent}</span>
+                <span className="text-sm text-muted-foreground">Absent</span>
+              </div>
+            </div>
+            
+            {/* Progress bar */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span>Attendance Progress</span>
+                <span>{stats.todayAttendance.total > 0 
+                  ? Math.round(((stats.todayAttendance.present + stats.todayAttendance.late) / stats.todayAttendance.total) * 100) 
+                  : 0}%</span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-green-500 to-primary" 
+                  style={{ 
+                    width: `${stats.todayAttendance.total > 0 
+                      ? Math.round(((stats.todayAttendance.present + stats.todayAttendance.late) / stats.todayAttendance.total) * 100) 
+                      : 0}%` 
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent check-ins */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Check-ins</CardTitle>
+          <CardDescription>
+            Latest employee check-ins across all locations
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {stats.recentCheckIns.length > 0 ? (
+            <div className="space-y-4">
+              {stats.recentCheckIns.map((checkIn) => (
+                <div key={checkIn.id} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
+                  <div className="flex items-center">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                      <FaUserCheck className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{checkIn.userName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        <FaMapMarkerAlt className="inline h-3 w-3 mr-1" />
+                        {checkIn.locationName}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {formatTime(checkIn.time)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 text-muted-foreground">
+              No recent check-ins to display
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default DashboardOverview;
