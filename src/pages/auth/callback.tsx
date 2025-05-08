@@ -14,20 +14,21 @@ export default function AuthCallback() {
         try {
           await createUser(session.user);
           
-          // Check user role and redirect accordingly
-          const { data } = await supabase
-            .from('User')
-            .select('role')
-            .eq('id', session.user.id)
-            .single();
-            
-          if (data && data.role === 'ADMIN') {
+          // Check user role using the API endpoint instead of direct Supabase query
+          const response = await fetch('/api/user');
+          if (!response.ok) {
+            throw new Error('Failed to fetch user data');
+          }
+          
+          const userData = await response.json();
+          
+          if (userData && userData.role === 'ADMIN') {
             router.push('/admin-dashboard');
           } else {
             router.push('/dashboard');
           }
         } catch (error) {
-          console.error('Error creating user:', error);
+          console.error('Error in auth callback:', error);
           router.push('/dashboard');
         }
       }
