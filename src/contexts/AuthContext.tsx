@@ -117,53 +117,82 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const signUp = async (email: string, password: string, role: string = 'EMPLOYEE') => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password
-    });
-
-    if (data.user) {
-      await createUser(data.user, role);
-    }
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message,
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password
       });
-      throw error;
-    } else {
+
+      if (error) {
+        // Check if it's a "user already registered" error
+        if (error.status === 422 && error.message.includes('already registered')) {
+          toast({
+            title: "Account exists",
+            description: "This email is already registered. Please log in instead.",
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: error.message,
+          });
+        }
+        throw error;
+      }
+
+      if (data.user) {
+        await createUser(data.user, role);
+      }
+
       toast({
         title: "Success",
         description: "Sign up successful! Please login to continue.",
       });
+    } catch (error) {
+      // Re-throw the error so the signup page can handle it
+      throw error;
     }
   };
 
   const signInWithMagicLink = async (email: string) => {
-    const { data, error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: `${window.location.origin}/dashboard`,
-      },
-    });
-    if (!error && data.user) {
-      await createUser(data.user);
-    }
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message,
+    try {
+      const { data, error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          // Allow creating new users with magic link
+          shouldCreateUser: true,
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+        },
       });
+      
+      if (error) {
+        // Handle specific error cases
+        if (error.message.includes('user not found')) {
+          toast({
+            title: "User not found",
+            description: "We'll send you a sign-up link instead.",
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: error.message,
+          });
+          throw error;
+        }
+      } else {
+        if (data.user) {
+          await createUser(data.user);
+        }
+        
+        toast({
+          title: "Success",
+          description: "Check your email for the login link",
+        });
+      }
+    } catch (error) {
+      // Re-throw for component handling
       throw error;
-    } else {
-      toast({
-        title: "Success",
-        description: "Check your email for the login link",
-      });
     }
   };
 

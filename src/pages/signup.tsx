@@ -29,13 +29,27 @@ const SignUpPage = () => {
       const { email, password } = formik.values;
       await signUp(email, password, selectedRole);
       router.push('/login');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast({
-        variant: "destructive",
-        title: "Sign up failed",
-        description: "Please try again.",
-      });
+      
+      // Check if it's a "user already registered" error
+      if (error.code === 'user_already_exists' || 
+          (error.message && error.message.includes('already registered'))) {
+        toast({
+          title: "Account exists",
+          description: "This email is already registered. Please log in instead.",
+        });
+        // Redirect to login page after a short delay
+        setTimeout(() => {
+          router.push('/login');
+        }, 2000);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Sign up failed",
+          description: error.message || "Please try again.",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
