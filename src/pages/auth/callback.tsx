@@ -6,17 +6,29 @@ import { useAuth } from '@/contexts/AuthContext'
 export default function AuthCallback() {
   const router = useRouter()
   const supabase = createClient()
+  const { createUser } = useAuth();
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         try {
-          const { createUser } = useAuth();
           await createUser(session.user);
-          router.push('/dashboard');
+          
+          // Check user role and redirect accordingly
+          const { data } = await supabase
+            .from('User')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (data && data.role === 'ADMIN') {
+            router.push('/admin-dashboard');
+          } else {
+            router.push('/dashboard');
+          }
         } catch (error) {
           console.error('Error creating user:', error);
-          // You might want to handle this error more gracefully
+          router.push('/dashboard');
         }
       }
     });
@@ -24,7 +36,7 @@ export default function AuthCallback() {
     return () => {
       authListener.subscription.unsubscribe()
     }
-  }, [router])
+  }, [router, createUser, supabase])
 
   return null
 }

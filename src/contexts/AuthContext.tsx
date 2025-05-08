@@ -6,9 +6,9 @@ import { useRouter } from 'next/router';
 
 interface AuthContextType {
   user: User | null;
-  createUser: (user: User) => Promise<void>;
+  createUser: (user: User, role?: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, role?: string) => Promise<void>;
   signInWithMagicLink: (email: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -57,7 +57,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
-  const createUser = async (user: User) => {
+  const createUser = async (user: User, role: string = 'EMPLOYEE') => {
     try {
       const { data, error } = await supabase
         .from('User')
@@ -75,7 +75,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             email: user.email,
             firstName: null,
             lastName: null,
-            role: 'EMPLOYEE',
+            role: role,
             department: null,
             position: null,
           });
@@ -113,14 +113,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, role: string = 'EMPLOYEE') => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password
     });
 
     if (data.user) {
-      await createUser(data.user);
+      await createUser(data.user, role);
     }
 
     if (error) {

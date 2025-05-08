@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useIsIFrame } from '@/hooks/useIsIFrame';
+import { createClient } from '@/util/supabase/component';
 
 const LoginPage = () => {
   const router = useRouter();
@@ -21,6 +22,7 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { isIframe } = useIsIFrame();
   const { toast } = useToast();
+  const supabase = createClient();
 
   const handleLogin = async (e: any) => {
     e.preventDefault();
@@ -28,6 +30,22 @@ const LoginPage = () => {
     try {
       const { email, password } = formik.values;
       await signIn(email, password);
+      
+      // Check user role and redirect accordingly
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('User')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+          
+        if (data && data.role === 'ADMIN') {
+          router.push('/admin-dashboard');
+          return;
+        }
+      }
+      
       router.push('/dashboard');
     } catch (error) {
       console.error(error);

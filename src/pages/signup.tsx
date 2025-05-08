@@ -6,6 +6,7 @@ import { AuthContext } from '@/contexts/AuthContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import GoogleButton from '@/components/GoogleButton';
 import Logo from '@/components/Logo';
+import RoleSelector from '@/components/RoleSelector';
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ const SignUpPage = () => {
   const { initializing, signUp } = useContext(AuthContext);
   const [showPw, setShowPw] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string>('EMPLOYEE');
   const { toast } = useToast();
 
   const handleSignUp = async (e: any) => {
@@ -25,7 +27,7 @@ const SignUpPage = () => {
     setIsLoading(true);
     try {
       const { email, password } = formik.values;
-      await signUp(email, password);
+      await signUp(email, password, selectedRole);
       router.push('/login');
     } catch (error) {
       console.error(error);
@@ -144,6 +146,11 @@ const SignUpPage = () => {
                         <p className="text-destructive text-xs">{formik.errors.password}</p>
                       )}
                     </div>
+                    
+                    <RoleSelector 
+                      selectedRole={selectedRole}
+                      onChange={setSelectedRole}
+                    />
 
                     <div className="flex justify-end mt-2 text-sm">
                       <div className="flex items-center gap-1.5 text-muted-foreground">
