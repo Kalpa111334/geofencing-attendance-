@@ -17,17 +17,31 @@ export default async function handler(
   // Handle GET request - Get user data
   if (req.method === 'GET') {
     try {
+      // First try to get user from Prisma
       const userData = await prisma.user.findUnique({
         where: { id: user.id },
       });
 
-      if (!userData) {
-        return res.status(404).json({ error: 'User not found' });
+      if (userData) {
+        return res.status(200).json(userData);
       }
 
-      return res.status(200).json(userData);
+      // If not found in Prisma, try to create the user
+      const newUser = await prisma.user.create({
+        data: {
+          id: user.id,
+          email: user.email || '',
+          firstName: null,
+          lastName: null,
+          role: 'EMPLOYEE',
+          department: null,
+          position: null,
+        },
+      });
+
+      return res.status(200).json(newUser);
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('Error fetching or creating user data:', error);
       return res.status(500).json({ error: 'Failed to fetch user data' });
     }
   }
@@ -36,6 +50,27 @@ export default async function handler(
   if (req.method === 'PATCH') {
     try {
       const { firstName, lastName, department, position } = req.body;
+
+      // First check if user exists
+      const existingUser = await prisma.user.findUnique({
+        where: { id: user.id },
+      });
+
+      if (!existingUser) {
+        // Create user if not exists
+        const newUser = await prisma.user.create({
+          data: {
+            id: user.id,
+            email: user.email || '',
+            firstName,
+            lastName,
+            department,
+            position,
+            role: 'EMPLOYEE',
+          },
+        });
+        return res.status(200).json(newUser);
+      }
 
       // Update user data
       const updatedUser = await prisma.user.update({
