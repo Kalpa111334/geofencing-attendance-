@@ -9,7 +9,59 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 model User {
-  id         String   @id @db.Uuid
-  email      String   @unique
-  createdAt  DateTime @default(now())
+  id           String       @id @db.Uuid
+  email        String       @unique
+  firstName    String?
+  lastName     String?
+  role         UserRole     @default(EMPLOYEE)
+  department   String?
+  position     String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  attendances  Attendance[]
+  locations    Location[]   @relation("LocationAdmins")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+model Location {
+  id          String       @id @default(uuid())
+  name        String
+  address     String
+  latitude    Float
+  longitude   Float
+  radius      Float        @default(50) // Default radius in meters
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  attendances Attendance[]
+  admins      User[]       @relation("LocationAdmins")
+}
+
+model Attendance {
+  id              String    @id @default(uuid())
+  userId          String    @db.Uuid
+  user            User      @relation(fields: [userId], references: [id])
+  locationId      String
+  location        Location  @relation(fields: [locationId], references: [id])
+  checkInTime     DateTime
+  checkOutTime    DateTime?
+  checkInLatitude Float
+  checkInLongitude Float
+  checkOutLatitude Float?
+  checkOutLongitude Float?
+  status          AttendanceStatus @default(PRESENT)
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  OVERTIME
 }

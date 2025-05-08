@@ -1,0 +1,169 @@
+import { NextApiRequest, NextApiResponse } from 'next';
+import { createClient } from '@/util/supabase/api';
+import prisma from '@/lib/prisma';
+import { isWithinRadius } from '@/util/geofencing';
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  // Get the user from the request
+  const supabase = createClient({ req, res });
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // Handle GET request - Get user's attendance records
+  if (req.method === 'GET') {
+    try {
+      const attendances = await prisma.attendance.findMany({
+        where: { userId: user.id },
+        include: { location: true },
+        orderBy: { checkInTime: 'desc' },
+      });
+      return res.status(200).json(attendances);
+    } catch (error) {
+      console.error('Error fetching attendance records:', error);
+      return res.status(500).json({ error: 'Failed to fetch attendance records' });
+    }
+  }
+
+  // Handle POST request - Create a check-in or check-out
+  if (req.method === 'POST') {
+    try {
+      const { locationId, latitude, longitude, type } = req.body;
+
+      // Validate required fields
+      if (!locationId || latitude === undefined || longitude === undefined || !type) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      // Get the location
+      const location = await prisma.location.findUnique({
+        where: { id: locationId },
+      });
+
+      if (!location) {
+        return res.status(404).json({ error: 'Location not found' });
+      }
+
+      // Check if user is within the geofence
+      const isInGeofence = isWithinRadius(
+        parseFloat(latitude),
+        parseFloat(longitude),
+        location.latitude,
+        location.longitude,
+        location.radius
+      );
+
+      if (!isInGeofence) {
+        return res.status(400).json({ 
+          error: 'You are not within the required distance of this location',
+          distance: {
+            required: location.radius,
+            actual: Math.round(
+              calculateDistance(
+                parseFloat(latitude),
+                parseFloat(longitude),
+                location.latitude,
+                location.longitude
+              )
+            )
+          }
+        });
+      }
+
+      // Handle check-in
+      if (type === 'check-in') {
+        // Check if there's an open attendance record
+        const openAttendance = await prisma.attendance.findFirst({
+          where: {
+            userId: user.id,
+            checkOutTime: null,
+          },
+        });
+
+        if (openAttendance) {
+          return res.status(400).json({ error: 'You already have an active check-in' });
+        }
+
+        // Create new attendance record
+        const attendance = await prisma.attendance.create({
+          data: {
+            userId: user.id,
+            locationId,
+            checkInTime: new Date(),
+            checkInLatitude: parseFloat(latitude),
+            checkInLongitude: parseFloat(longitude),
+            status: 'PRESENT', // Default status
+          },
+        });
+
+        return res.status(201).json(attendance);
+      }
+
+      // Handle check-out
+      if (type === 'check-out') {
+        // Find the open attendance record
+        const openAttendance = await prisma.attendance.findFirst({
+          where: {
+            userId: user.id,
+            checkOutTime: null,
+          },
+        });
+
+        if (!openAttendance) {
+          return res.status(400).json({ error: 'No active check-in found' });
+        }
+
+        // Update the attendance record with check-out information
+        const updatedAttendance = await prisma.attendance.update({
+          where: { id: openAttendance.id },
+          data: {
+            checkOutTime: new Date(),
+            checkOutLatitude: parseFloat(latitude),
+            checkOutLongitude: parseFloat(longitude),
+          },
+        });
+
+        return res.status(200).json(updatedAttendance);
+      }
+
+      return res.status(400).json({ error: 'Invalid attendance type' });
+    } catch (error) {
+      console.error('Error processing attendance:', error);
+      return res.status(500).json({ error: 'Failed to process attendance' });
+    }
+  }
+
+  // Return 405 for other methods
+  return res.status(405).json({ error: 'Method not allowed' });
+}
+
+// Helper function to calculate distance
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  // Earth's radius in meters
+  const R = 6371000;
+  
+  // Convert latitude and longitude from degrees to radians
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+  
+  // Haversine formula
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  
+  return distance;
+}

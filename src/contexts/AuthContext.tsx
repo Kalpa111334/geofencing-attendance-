@@ -73,6 +73,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           .insert({
             id: user.id,
             email: user.email,
+            firstName: null,
+            lastName: null,
+            role: 'EMPLOYEE',
+            department: null,
+            position: null,
           });
         if (insertError) {
           throw insertError;
