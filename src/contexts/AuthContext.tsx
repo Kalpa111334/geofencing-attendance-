@@ -59,31 +59,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const createUser = async (user: User, role: string = 'EMPLOYEE') => {
     try {
-      const { data, error } = await supabase
-        .from('User')
-        .select('id')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (error && error.code !== 'PGRST116') {
-        throw error;
+      // Use the API endpoint instead of direct Supabase access
+      const response = await fetch('/api/user', {
+        method: 'GET', // The endpoint will create the user if it doesn't exist
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create or fetch user profile');
       }
-      if (!data) {
-        const { error: insertError } = await supabase
-          .from('User')
-          .insert({
-            id: user.id,
-            email: user.email,
-            firstName: null,
-            lastName: null,
-            role: role,
-            department: null,
-            position: null,
-          });
-        if (insertError) {
-          throw insertError;
+      
+      // If we need to update the role, we can do that with a PATCH request
+      if (role !== 'EMPLOYEE') {
+        const updateResponse = await fetch('/api/user', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ role }),
+        });
+        
+        if (!updateResponse.ok) {
+          throw new Error('Failed to update user role');
         }
       }
     } catch (error) {
+      console.error('Error in createUser:', error);
       toast({
         variant: "destructive",
         title: "Error",

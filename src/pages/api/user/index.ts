@@ -49,7 +49,7 @@ export default async function handler(
   // Handle PATCH request - Update user data
   if (req.method === 'PATCH') {
     try {
-      const { firstName, lastName, department, position } = req.body;
+      const { firstName, lastName, department, position, role } = req.body;
 
       // First check if user exists
       const existingUser = await prisma.user.findUnique({
@@ -66,7 +66,7 @@ export default async function handler(
             lastName,
             department,
             position,
-            role: 'EMPLOYEE',
+            role: role || 'EMPLOYEE',
           },
         });
         return res.status(200).json(newUser);
@@ -80,6 +80,7 @@ export default async function handler(
           lastName,
           department,
           position,
+          ...(role && { role }), // Only include role if it's provided
         },
       });
 
