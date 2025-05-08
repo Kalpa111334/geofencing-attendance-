@@ -24,7 +24,7 @@ export default function Dashboard() {
           if (response.ok) {
             const userData = await response.json();
             setUserRole(userData.role || "EMPLOYEE");
-            setUserName(userData.firstName ? `${userData.firstName} ${userData.lastName || ''}` : user.email);
+            setUserName(userData.firstName ? `${userData.firstName} ${userData.lastName || ''}` : user.email || '');
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
