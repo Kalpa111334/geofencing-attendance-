@@ -108,7 +108,14 @@ const AttendanceCheckInOut: React.FC = () => {
       setLoading(true);
       
       // Get current position
-      const position = await getCurrentPosition();
+      const position = await getCurrentPosition().catch(err => {
+        console.error('Geolocation error:', err);
+        throw new Error('Unable to get your current location. Please ensure location services are enabled.');
+      });
+      
+      if (!position) {
+        throw new Error('Unable to get your current location');
+      }
       
       // Send check-in request
       const response = await fetch('/api/attendance', {
@@ -124,10 +131,16 @@ const AttendanceCheckInOut: React.FC = () => {
         }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        console.error('Error parsing response:', e);
+        throw new Error('Invalid response from server');
+      }
       
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to check in');
+        throw new Error(data?.error || 'Failed to check in');
       }
       
       toast({
@@ -164,7 +177,14 @@ const AttendanceCheckInOut: React.FC = () => {
       setLoading(true);
       
       // Get current position
-      const position = await getCurrentPosition();
+      const position = await getCurrentPosition().catch(err => {
+        console.error('Geolocation error:', err);
+        throw new Error('Unable to get your current location. Please ensure location services are enabled.');
+      });
+      
+      if (!position) {
+        throw new Error('Unable to get your current location');
+      }
       
       // Send check-out request
       const response = await fetch('/api/attendance', {
@@ -180,10 +200,16 @@ const AttendanceCheckInOut: React.FC = () => {
         }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        console.error('Error parsing response:', e);
+        throw new Error('Invalid response from server');
+      }
       
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to check out');
+        throw new Error(data?.error || 'Failed to check out');
       }
       
       toast({

@@ -31,22 +31,19 @@ const LoginPage = () => {
       const { email, password } = formik.values;
       await signIn(email, password);
       
-      // Check user role and redirect accordingly
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase
-          .from('User')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-          
-        if (data && data.role === 'ADMIN') {
-          router.push('/admin-dashboard');
-          return;
-        }
+      // Check user role using the API endpoint
+      const response = await fetch('/api/user');
+      if (!response.ok) {
+        throw new Error('Failed to fetch user data');
       }
       
-      router.push('/dashboard');
+      const userData = await response.json();
+      
+      if (userData && userData.role === 'ADMIN') {
+        router.push('/admin-dashboard');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (error) {
       console.error(error);
       toast({
