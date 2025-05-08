@@ -53,7 +53,7 @@ const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [roleFilter, setRoleFilter] = useState<string>('');
+  const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -176,7 +176,7 @@ const UserManagement: React.FC = () => {
       (user.firstName && user.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (user.lastName && user.lastName.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesRole = roleFilter === '' || user.role === roleFilter;
+    const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
     
     return matchesSearch && matchesRole;
   });
@@ -207,7 +207,7 @@ const UserManagement: React.FC = () => {
                   <SelectValue placeholder="Filter by role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Roles</SelectItem>
+                  <SelectItem value="ALL">All Roles</SelectItem>
                   <SelectItem value="ADMIN">Admin</SelectItem>
                   <SelectItem value="MANAGER">Manager</SelectItem>
                   <SelectItem value="EMPLOYEE">Employee</SelectItem>

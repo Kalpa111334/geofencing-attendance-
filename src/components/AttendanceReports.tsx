@@ -60,9 +60,9 @@ const AttendanceReports: React.FC = () => {
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [dateFilter, setDateFilter] = useState<string>('all');
-  const [locationFilter, setLocationFilter] = useState<string>('');
+  const [locationFilter, setLocationFilter] = useState<string>('ALL');
   const [locations, setLocations] = useState<Location[]>([]);
   const { toast } = useToast();
 
@@ -175,10 +175,10 @@ const AttendanceReports: React.FC = () => {
       attendance.location.name.toLowerCase().includes(searchTerm.toLowerCase());
     
     // Status filter
-    const matchesStatus = statusFilter === '' || attendance.status === statusFilter;
+    const matchesStatus = statusFilter === 'ALL' || attendance.status === statusFilter;
     
     // Location filter
-    const matchesLocation = locationFilter === '' || attendance.locationId === locationFilter;
+    const matchesLocation = locationFilter === 'ALL' || attendance.locationId === locationFilter;
     
     // Date filter
     let matchesDate = true;
@@ -234,7 +234,7 @@ const AttendanceReports: React.FC = () => {
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="ALL">All Statuses</SelectItem>
                   <SelectItem value="PRESENT">Present</SelectItem>
                   <SelectItem value="LATE">Late</SelectItem>
                   <SelectItem value="ABSENT">Absent</SelectItem>
@@ -260,7 +260,7 @@ const AttendanceReports: React.FC = () => {
                   <SelectValue placeholder="Location" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Locations</SelectItem>
+                  <SelectItem value="ALL">All Locations</SelectItem>
                   {locations.map(location => (
                     <SelectItem key={location.id} value={location.id}>
                       {location.name}
