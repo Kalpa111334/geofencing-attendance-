@@ -35,6 +35,7 @@ interface DashboardStats {
 const DashboardOverview: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [initializingLeaveTypes, setInitializingLeaveTypes] = useState<boolean>(false);
   const { toast } = useToast();
 
   // Fetch dashboard stats on component mount
@@ -69,39 +70,7 @@ const DashboardOverview: React.FC = () => {
     return format(new Date(timeString), 'h:mm a');
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <FaSpinner className="animate-spin h-8 w-8 text-primary" />
-      </div>
-    );
-  }
-
-  // If we don't have stats yet, show a placeholder
-  if (!stats) {
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Dashboard Overview</CardTitle>
-            <CardDescription>
-              No data available at the moment
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-center items-center py-8">
-              <FaExclamationTriangle className="h-8 w-8 text-yellow-500" />
-              <span className="ml-2 text-muted-foreground">Unable to load dashboard data</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   // Initialize leave types
-  const [initializingLeaveTypes, setInitializingLeaveTypes] = useState<boolean>(false);
-  
   const handleInitializeLeaveTypes = async () => {
     try {
       setInitializingLeaveTypes(true);
@@ -131,6 +100,36 @@ const DashboardOverview: React.FC = () => {
       setInitializingLeaveTypes(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <FaSpinner className="animate-spin h-8 w-8 text-primary" />
+      </div>
+    );
+  }
+
+  // If we don't have stats yet, show a placeholder
+  if (!stats) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Dashboard Overview</CardTitle>
+            <CardDescription>
+              No data available at the moment
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-center items-center py-8">
+              <FaExclamationTriangle className="h-8 w-8 text-yellow-500" />
+              <span className="ml-2 text-muted-foreground">Unable to load dashboard data</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
