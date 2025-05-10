@@ -358,12 +358,34 @@ const AdminLeaveManagement: React.FC = () => {
         }),
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate report');
+      let reportData;
+      let errorMessage = 'Failed to generate report';
+      
+      try {
+        const responseData = await response.text();
+        if (responseData) {
+          try {
+            const parsedData = JSON.parse(responseData);
+            if (!response.ok) {
+              errorMessage = parsedData.error || errorMessage;
+              throw new Error(errorMessage);
+            }
+            reportData = parsedData;
+          } catch (parseError) {
+            console.error('Error parsing JSON:', parseError);
+            throw new Error('Invalid response format from server');
+          }
+        } else {
+          throw new Error('Empty response from server');
+        }
+      } catch (responseError) {
+        console.error('Response error:', responseError);
+        throw new Error(errorMessage);
       }
       
-      const reportData = await response.json();
+      if (!reportData) {
+        throw new Error('No report data received');
+      }
       
       // Convert report data to CSV or display in a new window
       const reportWindow = window.open('', '_blank');
