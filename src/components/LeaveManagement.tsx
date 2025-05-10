@@ -171,7 +171,12 @@ const LeaveManagement: React.FC = () => {
   
   // Upload documents to server
   const uploadDocuments = async () => {
-    const uploadedDocs = [];
+    const uploadedDocs: Array<{
+      fileName: string;
+      fileUrl: string;
+      fileType: string;
+      fileSize: number;
+    }> = [];
     
     for (const file of documents) {
       try {
