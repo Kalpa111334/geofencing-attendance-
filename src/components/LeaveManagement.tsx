@@ -63,7 +63,8 @@ const LeaveManagement: React.FC = () => {
   
   // State for leave request form
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
-  const [selectedLeaveTypeId, setSelectedLeaveTypeId] = useState<string>('');
+  const [customLeaveType, setCustomLeaveType] = useState<string>('');
+  const [selectedLeaveTypeId, setSelectedLeaveTypeId] = useState<string>('custom');
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [reason, setReason] = useState<string>('');
@@ -81,14 +82,13 @@ const LeaveManagement: React.FC = () => {
     const fetchLeaveData = async () => {
       setIsLoading(true);
       try {
-        // Fetch leave types
+        // Fetch leave types (previously used leave types)
         const typesResponse = await fetch('/api/leave-types');
         if (typesResponse.ok) {
           const typesData = await typesResponse.json();
           setLeaveTypes(typesData);
-          if (typesData.length > 0) {
-            setSelectedLeaveTypeId(typesData[0].id);
-          }
+          // Default to custom leave type
+          setSelectedLeaveTypeId('custom');
         }
         
         // Fetch leave balances
@@ -221,7 +221,7 @@ const LeaveManagement: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedLeaveTypeId || !startDate || !endDate || !reason) {
+    if ((!selectedLeaveTypeId || (selectedLeaveTypeId === 'custom' && !customLeaveType)) || !startDate || !endDate || !reason) {
       toast({
         variant: 'destructive',
         title: 'Missing fields',
@@ -257,13 +257,8 @@ const LeaveManagement: React.FC = () => {
         uploadedDocs = await uploadDocuments();
       }
       
-      // Get custom leave type name if applicable
-      let customLeaveTypeName = '';
-      if (selectedLeaveTypeId === 'custom' || selectedLeaveTypeId.startsWith('custom-')) {
-        // Find the custom leave type in the array
-        const customType = leaveTypes.find(t => t.id === selectedLeaveTypeId);
-        customLeaveTypeName = customType?.name || 'Custom Leave';
-      }
+      // Get custom leave type name
+      const customLeaveTypeName = selectedLeaveTypeId === 'custom' ? customLeaveType : '';
       
       // Submit leave request
       const response = await fetch('/api/leave-requests', {
@@ -272,7 +267,7 @@ const LeaveManagement: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          leaveTypeId: selectedLeaveTypeId,
+          leaveTypeId: selectedLeaveTypeId === 'custom' ? 'custom' : selectedLeaveTypeId,
           customLeaveTypeName, // Pass the custom leave type name
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
@@ -429,55 +424,39 @@ const LeaveManagement: React.FC = () => {
                             <SelectValue placeholder="Select leave type" />
                           </SelectTrigger>
                           <SelectContent>
-                            {leaveTypes.map((type) => (
-                              <SelectItem key={type.id} value={type.id}>
-                                {type.name}
-                              </SelectItem>
-                            ))}
-                            <SelectItem value="custom">Custom Leave Type</SelectItem>
+                            <SelectItem value="custom">Enter New Leave Type</SelectItem>
+                            {leaveTypes.length > 0 && (
+                              <>
+                                <SelectItem value="divider" disabled>
+                                  ───── Previously Used ─────
+                                </SelectItem>
+                                {leaveTypes.map((type) => (
+                                  <SelectItem key={type.id} value={type.id}>
+                                    {type.name}
+                                  </SelectItem>
+                                ))}
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
                       
-                      {/* Custom Leave Type Input */}
+                      {/* Custom Leave Type Input - Always show when 'custom' is selected */}
                       {selectedLeaveTypeId === 'custom' && (
                         <div className="pt-2">
                           <Label htmlFor="customLeaveType" className="text-xs mb-1 block">
-                            Enter Custom Leave Type
+                            Enter Leave Type Name
                           </Label>
                           <Input
                             id="customLeaveType"
-                            placeholder="E.g., Family Emergency, Special Leave"
+                            placeholder="E.g., Sick Leave, Vacation, Family Emergency"
                             className="w-full"
-                            onChange={(e) => {
-                              // Create a temporary ID for the custom leave type
-                              const customId = `custom-${Date.now()}`;
-                              // Add the custom leave type to the leaveTypes array
-                              if (e.target.value.trim()) {
-                                const customType: LeaveType = {
-                                  id: customId,
-                                  name: e.target.value.trim(),
-                                  description: 'Custom leave type',
-                                  color: null
-                                };
-                                // Check if we already have a custom type in the array
-                                const existingCustomIndex = leaveTypes.findIndex(t => t.id.startsWith('custom-'));
-                                if (existingCustomIndex >= 0) {
-                                  // Replace the existing custom type
-                                  const updatedTypes = [...leaveTypes];
-                                  updatedTypes[existingCustomIndex] = customType;
-                                  setLeaveTypes(updatedTypes);
-                                } else {
-                                  // Add the new custom type
-                                  setLeaveTypes([...leaveTypes, customType]);
-                                }
-                                setSelectedLeaveTypeId(customId);
-                              }
-                            }}
+                            value={customLeaveType}
+                            onChange={(e) => setCustomLeaveType(e.target.value.trim())}
                             disabled={isSubmitting}
                           />
                           <p className="text-xs text-muted-foreground mt-1">
-                            Note: Custom leave types may require additional approval
+                            Specify the type of leave you are requesting
                           </p>
                         </div>
                       )}
@@ -485,7 +464,6 @@ const LeaveManagement: React.FC = () => {
                       {/* Show available balance for selected leave type */}
                       {selectedLeaveTypeId && 
                        selectedLeaveTypeId !== 'custom' && 
-                       !selectedLeaveTypeId.startsWith('custom-') && 
                        leaveBalances.length > 0 && (
                         <div className="text-sm text-muted-foreground mt-2">
                           {(() => {
@@ -500,7 +478,7 @@ const LeaveManagement: React.FC = () => {
                       )}
                       
                       {/* Message for custom leave types */}
-                      {(selectedLeaveTypeId === 'custom' || selectedLeaveTypeId?.startsWith('custom-')) && (
+                      {selectedLeaveTypeId === 'custom' && (
                         <div className="text-sm text-amber-600 mt-2 flex items-center">
                           <FaInfoCircle className="mr-1 h-3 w-3" />
                           No pre-defined balance for custom leave types
@@ -622,7 +600,7 @@ const LeaveManagement: React.FC = () => {
             <CardFooter>
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || !selectedLeaveTypeId || !startDate || !endDate || reason.length < 50}
+                disabled={isSubmitting || (selectedLeaveTypeId === 'custom' && !customLeaveType) || !startDate || !endDate || reason.length < 50}
                 className="w-full"
               >
                 {isSubmitting ? (

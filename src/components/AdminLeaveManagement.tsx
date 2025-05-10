@@ -707,11 +707,17 @@ const AdminLeaveManagement: React.FC = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ALL">All Leave Types</SelectItem>
-                        {leaveTypes.map((type) => (
-                          <SelectItem key={type.id} value={type.id}>
-                            {type.name}
+                        {leaveTypes.length > 0 ? (
+                          leaveTypes.map((type) => (
+                            <SelectItem key={type.id} value={type.id}>
+                              {type.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>
+                            No leave types found
                           </SelectItem>
-                        ))}
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1110,11 +1116,17 @@ const AdminLeaveManagement: React.FC = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="ALL">All Leave Types</SelectItem>
-                          {leaveTypes.map((type) => (
-                            <SelectItem key={type.id} value={type.id}>
-                              {type.name}
+                          {leaveTypes.length > 0 ? (
+                            leaveTypes.map((type) => (
+                              <SelectItem key={type.id} value={type.id}>
+                                {type.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>
+                              No leave types found
                             </SelectItem>
-                          ))}
+                          )}
                         </SelectContent>
                       </Select>
                     </div>

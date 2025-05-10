@@ -203,67 +203,26 @@ export default async function handler(
         });
       }
       
-      // Check leave balance
+      // Handle custom leave types
+      let finalLeaveTypeId = leaveTypeId;
       const currentYear = new Date().getFullYear();
-      const leaveBalance = await prisma.leaveBalance.findUnique({
-        where: {
-          userId_leaveTypeId_year: {
-            userId,
-            leaveTypeId,
-            year: currentYear
-          }
-        }
-      });
       
-      // If no balance record exists, create one with default values
-      if (!leaveBalance) {
-        // Get leave type to check if it's annual leave
-        const leaveType = await prisma.leaveType.findUnique({
-          where: { id: leaveTypeId }
-        });
+      if (leaveTypeId === 'custom') {
+        // Extract the custom leave type name from the request body
+        const customLeaveTypeName = req.body.customLeaveTypeName;
         
-        // Default annual leave quota is 60 days
-        const defaultQuota = leaveType?.name.toLowerCase().includes('annual') ? 60 : 15;
-        
-        await prisma.leaveBalance.create({
-          data: {
-            userId,
-            leaveTypeId,
-            year: currentYear,
-            totalDays: defaultQuota,
-            pendingDays: totalDays
-          }
-        });
-      } else {
-        // Check if enough balance is available
-        const availableDays = leaveBalance.totalDays - leaveBalance.usedDays - leaveBalance.pendingDays;
-        
-        if (availableDays < totalDays) {
+        if (!customLeaveTypeName) {
           return res.status(400).json({ 
-            error: `Insufficient leave balance. Available: ${availableDays} days, Requested: ${totalDays} days` 
+            error: 'Custom leave type name is required' 
           });
         }
-        
-        // Update pending days
-        await prisma.leaveBalance.update({
-          where: { id: leaveBalance.id },
-          data: { pendingDays: leaveBalance.pendingDays + totalDays }
-        });
-      }
-      
-      // Handle custom leave types (IDs starting with "custom-")
-      let finalLeaveTypeId = leaveTypeId;
-      
-      if (leaveTypeId.startsWith('custom-')) {
-        // Extract the custom leave type name from the request body
-        const customLeaveTypeName = req.body.customLeaveTypeName || 'Custom Leave';
         
         // Create a new leave type in the database
         const newLeaveType = await prisma.leaveType.create({
           data: {
             name: customLeaveTypeName,
             description: 'Custom leave type created by employee',
-            color: '#FFA500' // Default color for custom leave types
+            color: '#' + Math.floor(Math.random()*16777215).toString(16) // Random color
           }
         });
         
@@ -280,7 +239,48 @@ export default async function handler(
             pendingDays: totalDays
           }
         });
+      } else {
+        // For existing leave types, check balance
+        const leaveBalance = await prisma.leaveBalance.findUnique({
+          where: {
+            userId_leaveTypeId_year: {
+              userId,
+              leaveTypeId,
+              year: currentYear
+            }
+          }
+        });
+        
+        // If no balance record exists, create one with default values
+        if (!leaveBalance) {
+          await prisma.leaveBalance.create({
+            data: {
+              userId,
+              leaveTypeId,
+              year: currentYear,
+              totalDays: 15, // Default quota for all leave types
+              pendingDays: totalDays
+            }
+          });
+        } else {
+          // Check if enough balance is available
+          const availableDays = leaveBalance.totalDays - leaveBalance.usedDays - leaveBalance.pendingDays;
+          
+          if (availableDays < totalDays) {
+            return res.status(400).json({ 
+              error: `Insufficient leave balance. Available: ${availableDays} days, Requested: ${totalDays} days` 
+            });
+          }
+          
+          // Update pending days
+          await prisma.leaveBalance.update({
+            where: { id: leaveBalance.id },
+            data: { pendingDays: leaveBalance.pendingDays + totalDays }
+          });
+        }
       }
+      
+
       
       // Create leave request
       const leaveRequest = await prisma.leaveRequest.create({

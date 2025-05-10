@@ -2,39 +2,8 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import prisma from '@/lib/prisma';
 import { createClient } from '@/util/supabase/api';
 
-// Default leave types to initialize
-const defaultLeaveTypes = [
-  {
-    name: 'Annual Leave',
-    description: 'Regular paid time off for vacation or personal matters',
-    color: '#4CAF50' // Green
-  },
-  {
-    name: 'Sick Leave',
-    description: 'Leave due to illness or medical appointments',
-    color: '#F44336' // Red
-  },
-  {
-    name: 'Maternity Leave',
-    description: 'Leave for expectant or new mothers',
-    color: '#E91E63' // Pink
-  },
-  {
-    name: 'Paternity Leave',
-    description: 'Leave for new fathers',
-    color: '#9C27B0' // Purple
-  },
-  {
-    name: 'Bereavement Leave',
-    description: 'Leave due to death of a family member',
-    color: '#607D8B' // Blue Grey
-  },
-  {
-    name: 'Unpaid Leave',
-    description: 'Leave without pay',
-    color: '#9E9E9E' // Grey
-  }
-];
+// No default leave types - employees will create their own
+const defaultLeaveTypes: any[] = [];
 
 export default async function handler(
   req: NextApiRequest,
@@ -75,30 +44,33 @@ export default async function handler(
   }
 
   try {
-    // Check if leave types already exist
-    const existingLeaveTypes = await prisma.leaveType.findMany();
-    
-    if (existingLeaveTypes.length > 0) {
-      return res.status(200).json({ 
-        message: 'Leave types already initialized', 
-        count: existingLeaveTypes.length,
-        leaveTypes: existingLeaveTypes
-      });
-    }
-    
-    // Create default leave types
-    const createdLeaveTypes = await prisma.leaveType.createMany({
-      data: defaultLeaveTypes,
-      skipDuplicates: true
+    // Delete all existing leave types that aren't associated with any leave requests
+    const leaveTypesInUse = await prisma.leaveRequest.findMany({
+      select: {
+        leaveTypeId: true
+      },
+      distinct: ['leaveTypeId']
     });
     
-    // Fetch the created leave types
-    const newLeaveTypes = await prisma.leaveType.findMany();
+    const leaveTypeIdsInUse = leaveTypesInUse.map(lt => lt.leaveTypeId);
+    
+    // Delete leave types not in use
+    const deletedTypes = await prisma.leaveType.deleteMany({
+      where: {
+        id: {
+          notIn: leaveTypeIdsInUse
+        }
+      }
+    });
+    
+    // Fetch the remaining leave types (those in use)
+    const remainingLeaveTypes = await prisma.leaveType.findMany();
     
     return res.status(201).json({
-      message: 'Leave types initialized successfully',
-      count: createdLeaveTypes.count,
-      leaveTypes: newLeaveTypes
+      message: 'Leave types reset successfully',
+      deleted: deletedTypes.count,
+      remaining: remainingLeaveTypes.length,
+      leaveTypes: remainingLeaveTypes
     });
   } catch (error) {
     console.error('Error initializing leave types:', error);
