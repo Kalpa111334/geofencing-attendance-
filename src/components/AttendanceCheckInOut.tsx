@@ -3,8 +3,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { FaMapMarkerAlt, FaSignInAlt, FaSignOutAlt, FaSpinner } from 'react-icons/fa';
-import { getCurrentPosition } from '@/util/geofencing';
+import { FaMapMarkerAlt, FaSignInAlt, FaSignOutAlt, FaSpinner, FaExclamationTriangle, FaLocationArrow } from 'react-icons/fa';
+import { 
+  getCurrentPosition, 
+  getLocationWithFallback, 
+  checkGeolocationPermission, 
+  getBrowserLocationInstructions,
+  GeolocationError,
+  GEOLOCATION_ERROR_CODES
+} from '@/util/geofencing';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface Location {
   id: string;
@@ -32,13 +41,28 @@ const AttendanceCheckInOut: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [locationLoading, setLocationLoading] = useState<boolean>(true);
   const [attendanceLoading, setAttendanceLoading] = useState<boolean>(true);
+  const [locationPermission, setLocationPermission] = useState<PermissionState | 'unsupported' | 'unknown'>('unknown');
+  const [locationError, setLocationError] = useState<GeolocationError | null>(null);
+  const [showPermissionDialog, setShowPermissionDialog] = useState<boolean>(false);
   const { toast } = useToast();
 
   // Fetch locations and attendance data on component mount
   useEffect(() => {
     fetchLocations();
     fetchAttendance();
+    checkLocationPermission();
   }, []);
+
+  // Check location permission
+  const checkLocationPermission = async () => {
+    const permission = await checkGeolocationPermission();
+    setLocationPermission(permission);
+    
+    // If permission is denied, show the dialog
+    if (permission === 'denied') {
+      setShowPermissionDialog(true);
+    }
+  };
 
   // Fetch locations from API
   const fetchLocations = async () => {
@@ -104,19 +128,31 @@ const AttendanceCheckInOut: React.FC = () => {
       return;
     }
 
+    // Reset any previous location errors
+    setLocationError(null);
+    
     try {
       setLoading(true);
       
-      // Get current position
+      // Check permission first
+      const permission = await checkGeolocationPermission();
+      setLocationPermission(permission);
+      
+      if (permission === 'denied') {
+        setShowPermissionDialog(true);
+        throw new GeolocationError('Location permission denied. Please enable location access in your browser settings.', GEOLOCATION_ERROR_CODES.PERMISSION_DENIED);
+      }
+      
+      // Get current position with fallback
       let position;
       try {
-        position = await getCurrentPosition();
+        position = await getLocationWithFallback();
         if (!position) {
-          throw new Error('Unable to get your current location');
+          throw new GeolocationError('Unable to get your current location', undefined);
         }
       } catch (geoError: any) {
         console.error('Geolocation error:', geoError);
-        // Use the enhanced error message from our updated getCurrentPosition function
+        setLocationError(geoError instanceof GeolocationError ? geoError : new GeolocationError(geoError.message, undefined));
         throw geoError;
       }
       
@@ -176,19 +212,31 @@ const AttendanceCheckInOut: React.FC = () => {
       return;
     }
 
+    // Reset any previous location errors
+    setLocationError(null);
+    
     try {
       setLoading(true);
       
-      // Get current position
+      // Check permission first
+      const permission = await checkGeolocationPermission();
+      setLocationPermission(permission);
+      
+      if (permission === 'denied') {
+        setShowPermissionDialog(true);
+        throw new GeolocationError('Location permission denied. Please enable location access in your browser settings.', GEOLOCATION_ERROR_CODES.PERMISSION_DENIED);
+      }
+      
+      // Get current position with fallback
       let position;
       try {
-        position = await getCurrentPosition();
+        position = await getLocationWithFallback();
         if (!position) {
-          throw new Error('Unable to get your current location');
+          throw new GeolocationError('Unable to get your current location', undefined);
         }
       } catch (geoError: any) {
         console.error('Geolocation error:', geoError);
-        // Use the enhanced error message from our updated getCurrentPosition function
+        setLocationError(geoError instanceof GeolocationError ? geoError : new GeolocationError(geoError.message, undefined));
         throw geoError;
       }
       
@@ -257,8 +305,72 @@ const AttendanceCheckInOut: React.FC = () => {
     return `${hours}h ${minutes}m`;
   };
 
+  // Handle retry after location error
+  const handleRetryLocation = async () => {
+    setLocationError(null);
+    await checkLocationPermission();
+    
+    // If permission is now granted, try a test location request
+    if (locationPermission === 'granted') {
+      try {
+        await getCurrentPosition();
+        toast({
+          title: 'Success',
+          description: 'Location access is now working!',
+        });
+      } catch (error) {
+        console.error('Error getting location after retry:', error);
+        if (error instanceof GeolocationError) {
+          setLocationError(error);
+        }
+      }
+    }
+  };
+
+  // Get browser-specific instructions
+  const locationInstructions = getBrowserLocationInstructions();
+
   return (
     <div className="space-y-6">
+      {/* Location Permission Dialog */}
+      <Dialog open={showPermissionDialog} onOpenChange={setShowPermissionDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FaLocationArrow className="text-primary" />
+              Location Access Required
+            </DialogTitle>
+            <DialogDescription>
+              This app needs your location to verify you're within the workplace area.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <Alert variant="destructive">
+              <FaExclamationTriangle className="h-4 w-4" />
+              <AlertTitle>Location permission denied</AlertTitle>
+              <AlertDescription>
+                You've denied location access to this site. Please follow the instructions below to enable it.
+              </AlertDescription>
+            </Alert>
+            
+            <div className="bg-muted p-3 rounded-md">
+              <h4 className="font-medium mb-2">How to enable location access:</h4>
+              <div className="text-sm space-y-1 whitespace-pre-line">
+                {locationInstructions}
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={() => setShowPermissionDialog(false)}>Close</Button>
+            <Button variant="outline" onClick={handleRetryLocation}>
+              I've Enabled Location
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <CardHeader>
           <CardTitle>Attendance Check-In/Out</CardTitle>
@@ -267,6 +379,33 @@ const AttendanceCheckInOut: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Location Error Alert */}
+          {locationError && (
+            <Alert variant="destructive" className="mb-4">
+              <FaExclamationTriangle className="h-4 w-4" />
+              <AlertTitle>Location Error</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>{locationError.message}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    if (locationError.code === GEOLOCATION_ERROR_CODES.PERMISSION_DENIED) {
+                      setShowPermissionDialog(true);
+                    } else {
+                      handleRetryLocation();
+                    }
+                  }}
+                >
+                  <FaLocationArrow className="mr-2 h-4 w-4" />
+                  {locationError.code === GEOLOCATION_ERROR_CODES.PERMISSION_DENIED 
+                    ? 'Show Instructions' 
+                    : 'Retry Location Access'}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {currentAttendance ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-green-600 font-medium">
@@ -307,24 +446,46 @@ const AttendanceCheckInOut: React.FC = () => {
                     </SelectContent>
                   </Select>
                   
-                  <div className="mt-2 p-3 bg-blue-50 text-blue-800 rounded-md text-sm">
-                    <p className="font-medium mb-1">Location Access Required</p>
-                    <p>This app needs your location to verify you're within the workplace area. Please ensure:</p>
-                    <ul className="list-disc pl-5 mt-1 space-y-1">
-                      <li>Location services are enabled on your device</li>
-                      <li>You've granted location permission to this website</li>
-                      <li>You're using a secure (HTTPS) connection</li>
-                    </ul>
-                    <div className="mt-2 pt-2 border-t border-blue-200">
-                      <p className="font-medium">Having trouble?</p>
-                      <ol className="list-decimal pl-5 mt-1 space-y-1">
-                        <li>Click the lock/info icon in your browser's address bar</li>
-                        <li>Find "Location" or "Site settings" option</li>
-                        <li>Set permission to "Allow"</li>
-                        <li>Refresh the page and try again</li>
-                      </ol>
+                  {/* Location Permission Status */}
+                  {locationPermission === 'denied' && (
+                    <Alert variant="destructive" className="mt-4">
+                      <FaExclamationTriangle className="h-4 w-4" />
+                      <AlertTitle>Location Access Denied</AlertTitle>
+                      <AlertDescription className="space-y-2">
+                        <p>You need to enable location access to check in.</p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setShowPermissionDialog(true)}
+                        >
+                          <FaLocationArrow className="mr-2 h-4 w-4" />
+                          Show Instructions
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {locationPermission !== 'denied' && (
+                    <div className="mt-2 p-3 bg-blue-50 text-blue-800 rounded-md text-sm">
+                      <p className="font-medium mb-1">Location Access Required</p>
+                      <p>This app needs your location to verify you're within the workplace area. Please ensure:</p>
+                      <ul className="list-disc pl-5 mt-1 space-y-1">
+                        <li>Location services are enabled on your device</li>
+                        <li>You've granted location permission to this website</li>
+                        <li>You're using a secure (HTTPS) connection</li>
+                      </ul>
+                      <div className="mt-2 pt-2 border-t border-blue-200">
+                        <p className="font-medium">Having trouble?</p>
+                        <Button 
+                          variant="link" 
+                          className="p-0 h-auto text-blue-800 underline" 
+                          onClick={() => setShowPermissionDialog(true)}
+                        >
+                          View browser-specific instructions
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">
@@ -352,7 +513,7 @@ const AttendanceCheckInOut: React.FC = () => {
           ) : (
             <Button
               onClick={handleCheckIn}
-              disabled={loading || locations.length === 0}
+              disabled={loading || locations.length === 0 || locationPermission === 'denied'}
               className="w-full"
             >
               {loading ? (

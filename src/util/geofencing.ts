@@ -52,14 +52,35 @@ export function isWithinRadius(
 }
 
 /**
+ * Custom GeolocationError class with additional properties
+ */
+export class GeolocationError extends Error {
+  code?: number;
+  
+  constructor(message: string, code?: number) {
+    super(message);
+    this.name = 'GeolocationError';
+    this.code = code;
+  }
+}
+
+/**
+ * Geolocation error codes for reference
+ */
+export const GEOLOCATION_ERROR_CODES = {
+  PERMISSION_DENIED: 1,
+  POSITION_UNAVAILABLE: 2,
+  TIMEOUT: 3
+};
+
+/**
  * Gets the current position of the user
  * @returns Promise that resolves to the user's coordinates
  */
 export function getCurrentPosition(): Promise<GeolocationCoordinates> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      const error = new Error('Geolocation is not supported by your browser. Please use a modern browser with location services.');
-      error.name = 'GeolocationError';
+      const error = new GeolocationError('Geolocation is not supported by your browser. Please use a modern browser with location services.');
       reject(error);
       return;
     }
@@ -91,15 +112,154 @@ export function getCurrentPosition(): Promise<GeolocationCoordinates> {
             errorSolution = ' Please ensure location services are enabled on your device.';
         }
         
-        const enhancedError = new Error(errorMessage + errorSolution);
-        enhancedError.name = 'GeolocationError';
+        const enhancedError = new GeolocationError(errorMessage + errorSolution, error.code);
         reject(enhancedError);
       },
       { 
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000, // Increased timeout for better reliability
         maximumAge: 0
       }
     );
   });
+}
+
+/**
+ * Checks if the browser has geolocation permission
+ * @returns Promise that resolves with the permission state: 'granted', 'denied', 'prompt', or 'unsupported'
+ */
+export const checkGeolocationPermission = async (): Promise<PermissionState | 'unsupported'> => {
+  // Check if Permissions API is supported
+  if (!navigator.permissions || !navigator.permissions.query) {
+    return 'unsupported';
+  }
+  
+  try {
+    const permissionStatus = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+    return permissionStatus.state;
+  } catch (error) {
+    console.error('Error checking geolocation permission:', error);
+    return 'unsupported';
+  }
+};
+
+/**
+ * Attempts to get location with a fallback to low accuracy if high accuracy fails
+ * @returns Promise that resolves to the user's coordinates
+ */
+export function getLocationWithFallback(): Promise<GeolocationCoordinates> {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new GeolocationError('Geolocation is not supported by your browser'));
+      return;
+    }
+
+    // First try with high accuracy
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve(position.coords);
+      },
+      (highAccuracyError) => {
+        // If high accuracy fails with timeout or position unavailable, try with low accuracy
+        if (
+          highAccuracyError.code === highAccuracyError.TIMEOUT ||
+          highAccuracyError.code === highAccuracyError.POSITION_UNAVAILABLE
+        ) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              resolve(position.coords);
+            },
+            (lowAccuracyError) => {
+              // If low accuracy also fails, reject with the original error
+              const enhancedError = new GeolocationError(
+                getGeolocationErrorMessage(lowAccuracyError),
+                lowAccuracyError.code
+              );
+              reject(enhancedError);
+            },
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+          );
+        } else {
+          // For permission denied or other errors, reject immediately
+          const enhancedError = new GeolocationError(
+            getGeolocationErrorMessage(highAccuracyError),
+            highAccuracyError.code
+          );
+          reject(enhancedError);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  });
+}
+
+/**
+ * Helper function to get a user-friendly error message for geolocation errors
+ */
+function getGeolocationErrorMessage(error: GeolocationPositionError): string {
+  let message = 'Unable to get your current location. ';
+  
+  switch (error.code) {
+    case error.PERMISSION_DENIED:
+      message += 'Location permission was denied. Please enable location services in your browser settings by clicking the lock icon in the address bar and allowing location access.';
+      break;
+    case error.POSITION_UNAVAILABLE:
+      message += 'Location information is unavailable. Please check your device\'s GPS or network connection and try again.';
+      break;
+    case error.TIMEOUT:
+      message += 'The request to get your location timed out. Please check your internet connection and try again.';
+      break;
+    default:
+      message += 'An unknown error occurred. Please ensure location services are enabled on your device.';
+  }
+  
+  return message;
+}
+
+/**
+ * Provides browser-specific instructions for enabling location permissions
+ * @returns Instructions specific to the user's browser
+ */
+export function getBrowserLocationInstructions(): string {
+  const ua = navigator.userAgent;
+  
+  // Chrome or Edge
+  if (ua.includes('Chrome') || ua.includes('Edg')) {
+    return `
+      1. Click the lock/info icon in the address bar
+      2. Find "Location" in the site settings
+      3. Change the permission to "Allow"
+      4. Refresh the page
+    `;
+  }
+  // Firefox
+  else if (ua.includes('Firefox')) {
+    return `
+      1. Click the lock/info icon in the address bar
+      2. Click "Connection Secure" or "More Information"
+      3. Go to "Permissions" tab
+      4. Change "Access Your Location" to "Allow"
+      5. Refresh the page
+    `;
+  }
+  // Safari
+  else if (ua.includes('Safari') && !ua.includes('Chrome')) {
+    return `
+      1. Click Safari in the menu bar
+      2. Select "Settings" or "Preferences"
+      3. Go to "Websites" tab
+      4. Select "Location" on the left
+      5. Find this website and set permission to "Allow"
+      6. Refresh the page
+    `;
+  }
+  // Generic instructions
+  else {
+    return `
+      1. Click the lock/info icon in the address bar
+      2. Find location permissions in the site settings
+      3. Change the permission to "Allow"
+      4. Refresh the page
+    `;
+  }
 }
