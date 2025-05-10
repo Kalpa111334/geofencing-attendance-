@@ -9,17 +9,20 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 model User {
-  id           String       @id @db.Uuid
-  email        String       @unique
-  firstName    String?
-  lastName     String?
-  role         UserRole     @default(EMPLOYEE)
-  department   String?
-  position     String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  attendances  Attendance[]
-  locations    Location[]   @relation("LocationAdmins")
+  id             String          @id @db.Uuid
+  email          String          @unique
+  firstName      String?
+  lastName       String?
+  role           UserRole        @default(EMPLOYEE)
+  department     String?
+  position       String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  attendances    Attendance[]
+  locations      Location[]      @relation("LocationAdmins")
+  leaveRequests  LeaveRequest[]
+  leaveBalances  LeaveBalance[]
+  reviewedLeaves LeaveRequest[]  @relation("LeaveReviewer")
 }
 
 enum UserRole {
@@ -64,4 +67,69 @@ enum AttendanceStatus {
   LATE
   ABSENT
   OVERTIME
+}
+
+model LeaveType {
+  id            String         @id @default(uuid())
+  name          String
+  description   String?
+  color         String?        // For UI display
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  leaveRequests LeaveRequest[]
+  leaveBalances LeaveBalance[]
+}
+
+model LeaveRequest {
+  id               String           @id @default(uuid())
+  userId           String           @db.Uuid
+  user             User             @relation(fields: [userId], references: [id])
+  leaveTypeId      String
+  leaveType        LeaveType        @relation(fields: [leaveTypeId], references: [id])
+  startDate        DateTime
+  endDate          DateTime
+  totalDays        Float            // Can be fractional for half-days
+  reason           String           @db.Text
+  status           LeaveStatus      @default(PENDING)
+  reviewerId       String?          @db.Uuid
+  reviewer         User?            @relation("LeaveReviewer", fields: [reviewerId], references: [id])
+  reviewedAt       DateTime?
+  rejectionReason  String?          @db.Text
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  documents        LeaveDocument[]
+}
+
+model LeaveBalance {
+  id           String    @id @default(uuid())
+  userId       String    @db.Uuid
+  user         User      @relation(fields: [userId], references: [id])
+  leaveTypeId  String
+  leaveType    LeaveType @relation(fields: [leaveTypeId], references: [id])
+  year         Int
+  totalDays    Float     // Annual quota
+  usedDays     Float     @default(0)
+  pendingDays  Float     @default(0) // Days in pending requests
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, leaveTypeId, year])
+}
+
+model LeaveDocument {
+  id             String       @id @default(uuid())
+  leaveRequestId String
+  leaveRequest   LeaveRequest @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
+  fileName       String
+  fileUrl        String
+  fileType       String
+  fileSize       Int
+  uploadedAt     DateTime     @default(now())
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
 }

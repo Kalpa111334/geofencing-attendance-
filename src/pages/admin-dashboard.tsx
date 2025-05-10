@@ -11,7 +11,8 @@ import {
   FaUserEdit, 
   FaUsers, 
   FaChartBar, 
-  FaTachometerAlt 
+  FaTachometerAlt,
+  FaCalendarAlt
 } from "react-icons/fa";
 import AttendanceCheckInOut from "@/components/AttendanceCheckInOut";
 import LocationManagement from "@/components/LocationManagement";
@@ -19,6 +20,7 @@ import UserProfile from "@/components/UserProfile";
 import UserManagement from "@/components/UserManagement";
 import AttendanceReports from "@/components/AttendanceReports";
 import DashboardOverview from "@/components/DashboardOverview";
+import AdminLeaveManagement from "@/components/AdminLeaveManagement";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -93,7 +95,7 @@ export default function AdminDashboard() {
           </div>
 
           <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList className="grid grid-cols-3 md:grid-cols-6 lg:w-auto">
+            <TabsList className="grid grid-cols-4 md:grid-cols-7 lg:w-auto">
               <TabsTrigger value="overview">
                 <FaTachometerAlt className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Overview</span>
@@ -105,6 +107,10 @@ export default function AdminDashboard() {
               <TabsTrigger value="locations">
                 <FaMapMarkerAlt className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Locations</span>
+              </TabsTrigger>
+              <TabsTrigger value="leave">
+                <FaCalendarAlt className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Leave</span>
               </TabsTrigger>
               <TabsTrigger value="reports">
                 <FaChartBar className="mr-2 h-4 w-4" />
@@ -130,6 +136,10 @@ export default function AdminDashboard() {
             
             <TabsContent value="locations" className="space-y-4">
               <LocationManagement />
+            </TabsContent>
+            
+            <TabsContent value="leave" className="space-y-4">
+              <AdminLeaveManagement />
             </TabsContent>
             
             <TabsContent value="reports" className="space-y-4">

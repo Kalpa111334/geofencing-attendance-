@@ -3,9 +3,10 @@ import { useRouter } from "next/router";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FaUserClock, FaSignOutAlt, FaUser, FaUserEdit } from "react-icons/fa";
+import { FaUserClock, FaSignOutAlt, FaUser, FaUserEdit, FaCalendarAlt } from "react-icons/fa";
 import AttendanceCheckInOut from "@/components/AttendanceCheckInOut";
 import UserProfile from "@/components/UserProfile";
+import LeaveManagement from "@/components/LeaveManagement";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -84,6 +85,10 @@ export default function Dashboard() {
                 <FaUserClock className="mr-2 h-4 w-4" />
                 Attendance
               </TabsTrigger>
+              <TabsTrigger value="leave">
+                <FaCalendarAlt className="mr-2 h-4 w-4" />
+                Leave
+              </TabsTrigger>
               <TabsTrigger value="profile">
                 <FaUserEdit className="mr-2 h-4 w-4" />
                 Profile
@@ -92,6 +97,10 @@ export default function Dashboard() {
             
             <TabsContent value="attendance" className="space-y-4">
               <AttendanceCheckInOut />
+            </TabsContent>
+            
+            <TabsContent value="leave" className="space-y-4">
+              <LeaveManagement />
             </TabsContent>
             
             <TabsContent value="profile" className="space-y-4">

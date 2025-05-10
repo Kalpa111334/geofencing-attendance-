@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { 
   FaUserCheck, 
@@ -8,7 +9,8 @@ import {
   FaUsers, 
   FaSpinner,
   FaExclamationTriangle,
-  FaCalendarAlt
+  FaCalendarAlt,
+  FaPlus
 } from 'react-icons/fa';
 import { format } from 'date-fns';
 
@@ -96,6 +98,39 @@ const DashboardOverview: React.FC = () => {
       </div>
     );
   }
+
+  // Initialize leave types
+  const [initializingLeaveTypes, setInitializingLeaveTypes] = useState<boolean>(false);
+  
+  const handleInitializeLeaveTypes = async () => {
+    try {
+      setInitializingLeaveTypes(true);
+      const response = await fetch('/api/leave-types/init', {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to initialize leave types');
+      }
+      
+      const data = await response.json();
+      
+      toast({
+        title: 'Success',
+        description: data.message,
+      });
+    } catch (error: any) {
+      console.error('Error initializing leave types:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to initialize leave types',
+      });
+    } finally {
+      setInitializingLeaveTypes(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -233,6 +268,46 @@ const DashboardOverview: React.FC = () => {
             </div>
           </div>
         </CardContent>
+      </Card>
+
+      {/* Leave Management Setup */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Leave Management Setup</CardTitle>
+          <CardDescription>
+            Initialize the leave management system with default leave types
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Click the button below to initialize the leave management system with default leave types:
+              Annual Leave, Sick Leave, Maternity Leave, Paternity Leave, Bereavement Leave, and Unpaid Leave.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              This action only needs to be performed once when setting up the system.
+            </p>
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button 
+            onClick={handleInitializeLeaveTypes} 
+            disabled={initializingLeaveTypes}
+            className="w-full"
+          >
+            {initializingLeaveTypes ? (
+              <>
+                <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
+                Initializing...
+              </>
+            ) : (
+              <>
+                <FaPlus className="mr-2 h-4 w-4" />
+                Initialize Leave Types
+              </>
+            )}
+          </Button>
+        </CardFooter>
       </Card>
 
       {/* Recent check-ins */}
