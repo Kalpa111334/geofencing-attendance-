@@ -290,7 +290,13 @@ export default async function handler(
       const pendingRequests = leaveRequests.filter(req => req.status === 'PENDING').length;
       
       // Group by department
-      const departments = [...new Set(leaveRequests.map(req => req.user.department).filter(Boolean))];
+      const deptSet = new Set<string>();
+      leaveRequests.forEach(req => {
+        if (req.user.department) {
+          deptSet.add(req.user.department);
+        }
+      });
+      const departments = Array.from(deptSet);
       const departmentStats = departments.map(dept => {
         const deptRequests = leaveRequests.filter(req => req.user.department === dept);
         const totalDaysTaken = deptRequests

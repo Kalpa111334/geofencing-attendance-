@@ -373,7 +373,7 @@ export default async function handler(
       const updatedLeaveRequest = await prisma.leaveRequest.update({
         where: { id },
         data: {
-          status: status as LeaveStatus,
+          status: status as 'APPROVED' | 'REJECTED',
           reviewerId: userId,
           reviewedAt: new Date(),
           rejectionReason: status === 'REJECTED' ? rejectionReason : null

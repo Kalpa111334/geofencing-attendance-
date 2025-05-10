@@ -199,7 +199,7 @@ const LeaveManagement: React.FC = () => {
         
         if (response.ok) {
           const data = await response.json();
-          uploadedDocs.push(data);
+          uploadedDocs.push(data as any);
         } else {
           throw new Error('Failed to upload document');
         }

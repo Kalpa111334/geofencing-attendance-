@@ -115,20 +115,27 @@ const AdminLeaveManagement: React.FC = () => {
           setFilteredRequests(requestsData);
           
           // Extract unique departments
-          const uniqueDepartments = [...new Set(requestsData.map((req: LeaveRequest) => 
-            req.user.department).filter(Boolean))];
-          setDepartments(uniqueDepartments);
+          const deptSet = new Set<string>();
+          requestsData.forEach((req: LeaveRequest) => {
+            if (req.user.department) {
+              deptSet.add(req.user.department);
+            }
+          });
+          setDepartments(Array.from(deptSet));
           
           // Extract unique employees
-          const uniqueEmployees = [...new Map(requestsData.map((req: LeaveRequest) => 
-            [req.userId, { 
+          const empMap = new Map<string, User>();
+          requestsData.forEach((req: LeaveRequest) => {
+            empMap.set(req.userId, { 
               id: req.userId, 
               firstName: req.user.firstName, 
               lastName: req.user.lastName, 
               email: req.user.email,
-              department: req.user.department
-            }])).values()];
-          setEmployees(uniqueEmployees);
+              department: req.user.department,
+              position: null
+            });
+          });
+          setEmployees(Array.from(empMap.values()));
         }
         
         // Fetch leave types
