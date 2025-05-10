@@ -257,6 +257,14 @@ const LeaveManagement: React.FC = () => {
         uploadedDocs = await uploadDocuments();
       }
       
+      // Get custom leave type name if applicable
+      let customLeaveTypeName = '';
+      if (selectedLeaveTypeId === 'custom' || selectedLeaveTypeId.startsWith('custom-')) {
+        // Find the custom leave type in the array
+        const customType = leaveTypes.find(t => t.id === selectedLeaveTypeId);
+        customLeaveTypeName = customType?.name || 'Custom Leave';
+      }
+      
       // Submit leave request
       const response = await fetch('/api/leave-requests', {
         method: 'POST',
@@ -265,6 +273,7 @@ const LeaveManagement: React.FC = () => {
         },
         body: JSON.stringify({
           leaveTypeId: selectedLeaveTypeId,
+          customLeaveTypeName, // Pass the custom leave type name
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
           reason,
@@ -409,36 +418,95 @@ const LeaveManagement: React.FC = () => {
                   {/* Leave Type */}
                   <div className="space-y-2">
                     <Label htmlFor="leaveType">Leave Type *</Label>
-                    <Select
-                      value={selectedLeaveTypeId}
-                      onValueChange={setSelectedLeaveTypeId}
-                      disabled={isSubmitting || leaveTypes.length === 0}
-                    >
-                      <SelectTrigger id="leaveType">
-                        <SelectValue placeholder="Select leave type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {leaveTypes.map((type) => (
-                          <SelectItem key={type.id} value={type.id}>
-                            {type.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    
-                    {/* Show available balance for selected leave type */}
-                    {selectedLeaveTypeId && leaveBalances.length > 0 && (
-                      <div className="text-sm text-muted-foreground mt-2">
-                        {(() => {
-                          const balance = leaveBalances.find(b => b.leaveTypeId === selectedLeaveTypeId);
-                          if (balance) {
-                            const available = getAvailableDays(balance);
-                            return `Available: ${available} days`;
-                          }
-                          return null;
-                        })()}
+                    <div className="flex flex-col space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Select
+                          value={selectedLeaveTypeId}
+                          onValueChange={setSelectedLeaveTypeId}
+                          disabled={isSubmitting}
+                        >
+                          <SelectTrigger id="leaveType" className="flex-1">
+                            <SelectValue placeholder="Select leave type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {leaveTypes.map((type) => (
+                              <SelectItem key={type.id} value={type.id}>
+                                {type.name}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="custom">Custom Leave Type</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                    )}
+                      
+                      {/* Custom Leave Type Input */}
+                      {selectedLeaveTypeId === 'custom' && (
+                        <div className="pt-2">
+                          <Label htmlFor="customLeaveType" className="text-xs mb-1 block">
+                            Enter Custom Leave Type
+                          </Label>
+                          <Input
+                            id="customLeaveType"
+                            placeholder="E.g., Family Emergency, Special Leave"
+                            className="w-full"
+                            onChange={(e) => {
+                              // Create a temporary ID for the custom leave type
+                              const customId = `custom-${Date.now()}`;
+                              // Add the custom leave type to the leaveTypes array
+                              if (e.target.value.trim()) {
+                                const customType: LeaveType = {
+                                  id: customId,
+                                  name: e.target.value.trim(),
+                                  description: 'Custom leave type',
+                                  color: null
+                                };
+                                // Check if we already have a custom type in the array
+                                const existingCustomIndex = leaveTypes.findIndex(t => t.id.startsWith('custom-'));
+                                if (existingCustomIndex >= 0) {
+                                  // Replace the existing custom type
+                                  const updatedTypes = [...leaveTypes];
+                                  updatedTypes[existingCustomIndex] = customType;
+                                  setLeaveTypes(updatedTypes);
+                                } else {
+                                  // Add the new custom type
+                                  setLeaveTypes([...leaveTypes, customType]);
+                                }
+                                setSelectedLeaveTypeId(customId);
+                              }
+                            }}
+                            disabled={isSubmitting}
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Note: Custom leave types may require additional approval
+                          </p>
+                        </div>
+                      )}
+                      
+                      {/* Show available balance for selected leave type */}
+                      {selectedLeaveTypeId && 
+                       selectedLeaveTypeId !== 'custom' && 
+                       !selectedLeaveTypeId.startsWith('custom-') && 
+                       leaveBalances.length > 0 && (
+                        <div className="text-sm text-muted-foreground mt-2">
+                          {(() => {
+                            const balance = leaveBalances.find(b => b.leaveTypeId === selectedLeaveTypeId);
+                            if (balance) {
+                              const available = getAvailableDays(balance);
+                              return `Available: ${available} days`;
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      )}
+                      
+                      {/* Message for custom leave types */}
+                      {(selectedLeaveTypeId === 'custom' || selectedLeaveTypeId?.startsWith('custom-')) && (
+                        <div className="text-sm text-amber-600 mt-2 flex items-center">
+                          <FaInfoCircle className="mr-1 h-3 w-3" />
+                          No pre-defined balance for custom leave types
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Date Range */}

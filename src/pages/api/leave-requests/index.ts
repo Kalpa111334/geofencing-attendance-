@@ -251,11 +251,42 @@ export default async function handler(
         });
       }
       
+      // Handle custom leave types (IDs starting with "custom-")
+      let finalLeaveTypeId = leaveTypeId;
+      
+      if (leaveTypeId.startsWith('custom-')) {
+        // Extract the custom leave type name from the request body
+        const customLeaveTypeName = req.body.customLeaveTypeName || 'Custom Leave';
+        
+        // Create a new leave type in the database
+        const newLeaveType = await prisma.leaveType.create({
+          data: {
+            name: customLeaveTypeName,
+            description: 'Custom leave type created by employee',
+            color: '#FFA500' // Default color for custom leave types
+          }
+        });
+        
+        // Use the newly created leave type ID
+        finalLeaveTypeId = newLeaveType.id;
+        
+        // Create a default leave balance for this new type
+        await prisma.leaveBalance.create({
+          data: {
+            userId,
+            leaveTypeId: finalLeaveTypeId,
+            year: currentYear,
+            totalDays: 15, // Default quota for custom leave types
+            pendingDays: totalDays
+          }
+        });
+      }
+      
       // Create leave request
       const leaveRequest = await prisma.leaveRequest.create({
         data: {
           userId,
-          leaveTypeId,
+          leaveTypeId: finalLeaveTypeId,
           startDate: parsedStartDate,
           endDate: parsedEndDate,
           totalDays,
