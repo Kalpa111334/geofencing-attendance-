@@ -7,7 +7,7 @@ export default async function handler(
   res: NextApiResponse
 ) {
   // Create Supabase client with admin privileges
-  const supabase = createClient();
+  const supabase = createClient(req, res);
   
   // Get user from session
   const {

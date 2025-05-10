@@ -609,7 +609,7 @@ const AdminLeaveManagement: React.FC = () => {
                         <SelectValue placeholder="Filter by employee" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Employees</SelectItem>
+                        <SelectItem value="ALL">All Employees</SelectItem>
                         {employees.map((emp) => (
                           <SelectItem key={emp.id} value={emp.id}>
                             {getEmployeeName(emp)}
