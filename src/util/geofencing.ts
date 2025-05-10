@@ -58,40 +58,48 @@ export function isWithinRadius(
 export function getCurrentPosition(): Promise<GeolocationCoordinates> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not supported by your browser'));
-    } else {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve(position.coords);
-        },
-        (error) => {
-          // Provide more specific error messages based on the error code
-          let errorMessage = 'Unable to get your current location.';
-          
-          switch(error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage += ' Location permission was denied. Please enable location services in your browser settings.';
-              break;
-            case error.POSITION_UNAVAILABLE:
-              errorMessage += ' Location information is unavailable. Please try again later.';
-              break;
-            case error.TIMEOUT:
-              errorMessage += ' The request to get your location timed out. Please try again.';
-              break;
-            default:
-              errorMessage += ' Please ensure location services are enabled.';
-          }
-          
-          const enhancedError = new Error(errorMessage);
-          enhancedError.name = 'GeolocationError';
-          reject(enhancedError);
-        },
-        { 
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
-      );
+      const error = new Error('Geolocation is not supported by your browser. Please use a modern browser with location services.');
+      error.name = 'GeolocationError';
+      reject(error);
+      return;
     }
+    
+    // Try to get the position with high accuracy first
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve(position.coords);
+      },
+      (error) => {
+        // Provide more specific error messages based on the error code
+        let errorMessage = 'Unable to get your current location.';
+        let errorSolution = '';
+        
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage += ' Location permission was denied.';
+            errorSolution = ' Please enable location services in your browser settings by clicking the lock icon in the address bar and allowing location access.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage += ' Location information is unavailable.';
+            errorSolution = ' Please check your device\'s GPS or network connection and try again.';
+            break;
+          case error.TIMEOUT:
+            errorMessage += ' The request to get your location timed out.';
+            errorSolution = ' Please check your internet connection and try again.';
+            break;
+          default:
+            errorSolution = ' Please ensure location services are enabled on your device.';
+        }
+        
+        const enhancedError = new Error(errorMessage + errorSolution);
+        enhancedError.name = 'GeolocationError';
+        reject(enhancedError);
+      },
+      { 
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
   });
 }

@@ -1080,7 +1080,7 @@ const AdminLeaveManagement: React.FC = () => {
                           <SelectValue placeholder="All leave types" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Leave Types</SelectItem>
+                          <SelectItem value="ALL">All Leave Types</SelectItem>
                           {leaveTypes.map((type) => (
                             <SelectItem key={type.id} value={type.id}>
                               {type.name}

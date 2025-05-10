@@ -315,6 +315,15 @@ const AttendanceCheckInOut: React.FC = () => {
                       <li>You've granted location permission to this website</li>
                       <li>You're using a secure (HTTPS) connection</li>
                     </ul>
+                    <div className="mt-2 pt-2 border-t border-blue-200">
+                      <p className="font-medium">Having trouble?</p>
+                      <ol className="list-decimal pl-5 mt-1 space-y-1">
+                        <li>Click the lock/info icon in your browser's address bar</li>
+                        <li>Find "Location" or "Site settings" option</li>
+                        <li>Set permission to "Allow"</li>
+                        <li>Refresh the page and try again</li>
+                      </ol>
+                    </div>
                   </div>
                 </>
               ) : (
