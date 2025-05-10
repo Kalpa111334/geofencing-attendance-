@@ -108,13 +108,16 @@ const AttendanceCheckInOut: React.FC = () => {
       setLoading(true);
       
       // Get current position
-      const position = await getCurrentPosition().catch(err => {
-        console.error('Geolocation error:', err);
-        throw new Error('Unable to get your current location. Please ensure location services are enabled.');
-      });
-      
-      if (!position) {
-        throw new Error('Unable to get your current location');
+      let position;
+      try {
+        position = await getCurrentPosition();
+        if (!position) {
+          throw new Error('Unable to get your current location');
+        }
+      } catch (geoError: any) {
+        console.error('Geolocation error:', geoError);
+        // Use the enhanced error message from our updated getCurrentPosition function
+        throw geoError;
       }
       
       // Send check-in request
@@ -177,13 +180,16 @@ const AttendanceCheckInOut: React.FC = () => {
       setLoading(true);
       
       // Get current position
-      const position = await getCurrentPosition().catch(err => {
-        console.error('Geolocation error:', err);
-        throw new Error('Unable to get your current location. Please ensure location services are enabled.');
-      });
-      
-      if (!position) {
-        throw new Error('Unable to get your current location');
+      let position;
+      try {
+        position = await getCurrentPosition();
+        if (!position) {
+          throw new Error('Unable to get your current location');
+        }
+      } catch (geoError: any) {
+        console.error('Geolocation error:', geoError);
+        // Use the enhanced error message from our updated getCurrentPosition function
+        throw geoError;
       }
       
       // Send check-out request
@@ -283,22 +289,34 @@ const AttendanceCheckInOut: React.FC = () => {
                   <FaSpinner className="animate-spin h-5 w-5 text-primary" />
                 </div>
               ) : locations.length > 0 ? (
-                <Select
-                  value={selectedLocationId}
-                  onValueChange={setSelectedLocationId}
-                  disabled={loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((location) => (
-                      <SelectItem key={location.id} value={location.id}>
-                        {location.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <>
+                  <Select
+                    value={selectedLocationId}
+                    onValueChange={setSelectedLocationId}
+                    disabled={loading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locations.map((location) => (
+                        <SelectItem key={location.id} value={location.id}>
+                          {location.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <div className="mt-2 p-3 bg-blue-50 text-blue-800 rounded-md text-sm">
+                    <p className="font-medium mb-1">Location Access Required</p>
+                    <p>This app needs your location to verify you're within the workplace area. Please ensure:</p>
+                    <ul className="list-disc pl-5 mt-1 space-y-1">
+                      <li>Location services are enabled on your device</li>
+                      <li>You've granted location permission to this website</li>
+                      <li>You're using a secure (HTTPS) connection</li>
+                    </ul>
+                  </div>
+                </>
               ) : (
                 <p className="text-sm text-muted-foreground">
                   No locations available. Please contact your administrator.

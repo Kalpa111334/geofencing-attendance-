@@ -65,9 +65,32 @@ export function getCurrentPosition(): Promise<GeolocationCoordinates> {
           resolve(position.coords);
         },
         (error) => {
-          reject(error);
+          // Provide more specific error messages based on the error code
+          let errorMessage = 'Unable to get your current location.';
+          
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage += ' Location permission was denied. Please enable location services in your browser settings.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage += ' Location information is unavailable. Please try again later.';
+              break;
+            case error.TIMEOUT:
+              errorMessage += ' The request to get your location timed out. Please try again.';
+              break;
+            default:
+              errorMessage += ' Please ensure location services are enabled.';
+          }
+          
+          const enhancedError = new Error(errorMessage);
+          enhancedError.name = 'GeolocationError';
+          reject(enhancedError);
         },
-        { enableHighAccuracy: true }
+        { 
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
       );
     }
   });
