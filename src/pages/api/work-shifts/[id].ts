@@ -118,44 +118,62 @@ export default async function handler(
   // Handle DELETE request - Delete a work shift
   if (req.method === 'DELETE') {
     try {
-      // Check if the work shift exists
-      const workShift = await prisma.workShift.findUnique({
-        where: { id },
-        include: {
-          employees: true,
-          rosters: true
-        }
-      });
-
-      if (!workShift) {
-        return res.status(404).json({ error: 'Work shift not found' });
-      }
-
-      // First, delete any associated rosters
-      if (workShift.rosters.length > 0) {
-        await prisma.roster.deleteMany({
-          where: { workShiftId: id }
-        });
-      }
-
-      // Then, disconnect all employee relationships
-      if (workShift.employees.length > 0) {
-        await prisma.workShift.update({
+      // Start a transaction to ensure all operations succeed or fail together
+      return await prisma.$transaction(async (tx) => {
+        // Check if the work shift exists
+        const workShift = await tx.workShift.findUnique({
           where: { id },
-          data: {
-            employees: {
-              disconnect: workShift.employees.map(emp => ({ id: emp.id }))
-            }
+          include: {
+            employees: true,
+            rosters: true
           }
         });
-      }
 
-      // Finally, delete the work shift
-      await prisma.workShift.delete({
-        where: { id }
+        if (!workShift) {
+          return res.status(404).json({ error: 'Work shift not found' });
+        }
+
+        // First, delete any associated rosters
+        if (workShift.rosters.length > 0) {
+          await tx.roster.deleteMany({
+            where: { workShiftId: id }
+          });
+        }
+
+        // For each employee, update their workShifts relation directly
+        for (const employee of workShift.employees) {
+          // Get all work shifts for this employee except the one being deleted
+          const employeeWorkShifts = await tx.user.findUnique({
+            where: { id: employee.id },
+            select: {
+              workShifts: {
+                where: {
+                  id: {
+                    not: id
+                  }
+                }
+              }
+            }
+          });
+
+          // Update the employee with only the remaining work shifts
+          await tx.user.update({
+            where: { id: employee.id },
+            data: {
+              workShifts: {
+                set: employeeWorkShifts?.workShifts.map(ws => ({ id: ws.id })) || []
+              }
+            }
+          });
+        }
+
+        // Finally, delete the work shift
+        await tx.workShift.delete({
+          where: { id }
+        });
+
+        return res.status(200).json({ message: 'Work shift deleted successfully' });
       });
-
-      return res.status(200).json({ message: 'Work shift deleted successfully' });
     } catch (error) {
       console.error('Error deleting work shift:', error);
       return res.status(500).json({ error: 'Failed to delete work shift' });
