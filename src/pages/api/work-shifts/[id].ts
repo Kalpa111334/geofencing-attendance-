@@ -118,62 +118,38 @@ export default async function handler(
   // Handle DELETE request - Delete a work shift
   if (req.method === 'DELETE') {
     try {
-      // Start a transaction to ensure all operations succeed or fail together
-      return await prisma.$transaction(async (tx) => {
-        // Check if the work shift exists
-        const workShift = await tx.workShift.findUnique({
-          where: { id },
-          include: {
-            employees: true,
-            rosters: true
-          }
-        });
-
-        if (!workShift) {
-          return res.status(404).json({ error: 'Work shift not found' });
+      // First, check if the work shift exists
+      const workShift = await prisma.workShift.findUnique({
+        where: { id },
+        include: {
+          rosters: true
         }
-
-        // First, delete any associated rosters
-        if (workShift.rosters.length > 0) {
-          await tx.roster.deleteMany({
-            where: { workShiftId: id }
-          });
-        }
-
-        // For each employee, update their workShifts relation directly
-        for (const employee of workShift.employees) {
-          // Get all work shifts for this employee except the one being deleted
-          const employeeWorkShifts = await tx.user.findUnique({
-            where: { id: employee.id },
-            select: {
-              workShifts: {
-                where: {
-                  id: {
-                    not: id
-                  }
-                }
-              }
-            }
-          });
-
-          // Update the employee with only the remaining work shifts
-          await tx.user.update({
-            where: { id: employee.id },
-            data: {
-              workShifts: {
-                set: employeeWorkShifts?.workShifts.map(ws => ({ id: ws.id })) || []
-              }
-            }
-          });
-        }
-
-        // Finally, delete the work shift
-        await tx.workShift.delete({
-          where: { id }
-        });
-
-        return res.status(200).json({ message: 'Work shift deleted successfully' });
       });
+
+      if (!workShift) {
+        return res.status(404).json({ error: 'Work shift not found' });
+      }
+
+      // Delete any associated rosters
+      if (workShift.rosters.length > 0) {
+        await prisma.roster.deleteMany({
+          where: { workShiftId: id }
+        });
+      }
+
+      // Use raw SQL query to delete the relationships in the junction table
+      // This bypasses Prisma's ORM layer which is causing the issue
+      await prisma.$executeRawUnsafe(`
+        DELETE FROM "_EmployeeWorkShifts" 
+        WHERE "B" = '${id}'
+      `);
+
+      // Now that relationships are removed, delete the work shift
+      await prisma.workShift.delete({
+        where: { id }
+      });
+
+      return res.status(200).json({ message: 'Work shift deleted successfully' });
     } catch (error) {
       console.error('Error deleting work shift:', error);
       return res.status(500).json({ error: 'Failed to delete work shift' });
