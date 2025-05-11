@@ -28,9 +28,9 @@ export default async function handler(
   if (req.method === 'GET') {
     try {
       // Get today's date range
-      const today = new Date();
-      const todayStart = startOfDay(today);
-      const todayEnd = endOfDay(today);
+      const currentDate = new Date();
+      const todayStart = startOfDay(currentDate);
+      const todayEnd = endOfDay(currentDate);
 
       // Get total users count
       const totalUsers = await prisma.user.count();
@@ -53,9 +53,9 @@ export default async function handler(
       });
 
       // Get all work shifts for today
-      const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const todayName = dayNames[today];
+      const todayName = dayNames[dayOfWeek];
       
       // Find all work shifts active today
       const activeWorkShifts = await prisma.workShift.findMany({
