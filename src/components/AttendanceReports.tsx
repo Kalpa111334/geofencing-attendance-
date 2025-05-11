@@ -410,10 +410,10 @@ const AttendanceReports: React.FC = () => {
             doc.setFontSize(12);
             doc.text('ATTENDANCE DETAILS', 15, 190);
             
-            // Prepare table data with the requested structure
+            // Prepare table data with the requested structure: Employee, Location, Check In, Check Out, Duration, Status
             const tableColumn = ["Employee", "Location", "Check In", "Check Out", "Duration", "Status"];
             const tableRows = pdfData.attendances.map(att => [
-              pdfData.employeeInfo.name,
+              att.employee || pdfData.employeeInfo.name, // Use employee name from attendance record
               att.location,
               att.checkIn,
               att.checkOut,
@@ -421,7 +421,7 @@ const AttendanceReports: React.FC = () => {
               att.status
             ]);
             
-            // Add the table
+            // Add the table with the specified structure
             (doc as any).autoTable({
               head: [tableColumn],
               body: tableRows,
