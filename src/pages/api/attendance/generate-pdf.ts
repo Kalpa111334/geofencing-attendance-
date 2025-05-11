@@ -120,7 +120,7 @@ export default async function handler(
           email: targetUser.email,
           department: targetUser.department || 'N/A',
           position: targetUser.position || 'N/A',
-          employeeId: targetUser.employeeId || 'N/A',
+          employeeId: targetUser.id || 'N/A', // Use user.id instead of employeeId which doesn't exist
         },
         summary: {
           totalDays,

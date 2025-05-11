@@ -276,7 +276,7 @@ const AttendanceReports: React.FC = () => {
           doc.text('Name:', 15, 50);
           doc.text('Department:', 15, 56);
           doc.text('Position:', 15, 62);
-          doc.text('Employee ID:', 15, 68);
+          doc.text('User ID:', 15, 68);
           
           // Right column - values
           doc.setFont('helvetica', 'bold');
@@ -792,7 +792,7 @@ ${pdfData.attendances.length > 3 ? `\n...and ${pdfData.attendances.length - 3} m
                   <div>Email: <span className="font-medium">{pdfData.employeeInfo.email}</span></div>
                   <div>Department: <span className="font-medium">{pdfData.employeeInfo.department}</span></div>
                   <div>Position: <span className="font-medium">{pdfData.employeeInfo.position}</span></div>
-                  <div>Employee ID: <span className="font-medium">{pdfData.employeeInfo.employeeId || 'N/A'}</span></div>
+                  <div>User ID: <span className="font-medium">{pdfData.employeeInfo.employeeId || 'N/A'}</span></div>
                 </div>
               </div>
               
