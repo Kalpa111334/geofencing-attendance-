@@ -121,15 +121,38 @@ export default async function handler(
       // Check if the work shift exists
       const workShift = await prisma.workShift.findUnique({
         where: { id },
+        include: {
+          employees: true,
+          rosters: true
+        }
       });
 
       if (!workShift) {
         return res.status(404).json({ error: 'Work shift not found' });
       }
 
-      // Delete the work shift
+      // First, delete any associated rosters
+      if (workShift.rosters.length > 0) {
+        await prisma.roster.deleteMany({
+          where: { workShiftId: id }
+        });
+      }
+
+      // Then, disconnect all employee relationships
+      if (workShift.employees.length > 0) {
+        await prisma.workShift.update({
+          where: { id },
+          data: {
+            employees: {
+              disconnect: workShift.employees.map(emp => ({ id: emp.id }))
+            }
+          }
+        });
+      }
+
+      // Finally, delete the work shift
       await prisma.workShift.delete({
-        where: { id },
+        where: { id }
       });
 
       return res.status(200).json({ message: 'Work shift deleted successfully' });
