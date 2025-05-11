@@ -23,6 +23,8 @@ model User {
   leaveRequests  LeaveRequest[]
   leaveBalances  LeaveBalance[]
   reviewedLeaves LeaveRequest[]  @relation("LeaveReviewer")
+  workShifts     WorkShift[]     @relation("EmployeeWorkShifts")
+  rosters        Roster[]        @relation("EmployeeRosters")
 }
 
 enum UserRole {
@@ -132,4 +134,30 @@ enum LeaveStatus {
   APPROVED
   REJECTED
   CANCELLED
+}
+
+model WorkShift {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  startTime   String    // Store as HH:MM format
+  endTime     String    // Store as HH:MM format
+  days        String[]  // Array of days of the week (e.g., ["Monday", "Tuesday"])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  employees   User[]    @relation("EmployeeWorkShifts")
+  rosters     Roster[]
+}
+
+model Roster {
+  id          String    @id @default(uuid())
+  userId      String    @db.Uuid
+  user        User      @relation("EmployeeRosters", fields: [userId], references: [id])
+  workShiftId String
+  workShift   WorkShift @relation(fields: [workShiftId], references: [id])
+  startDate   DateTime
+  endDate     DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

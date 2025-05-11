@@ -52,6 +52,61 @@ export default async function handler(
         distinct: ['userId'],
       });
 
+      // Get all work shifts for today
+      const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const todayName = dayNames[today];
+      
+      // Find all work shifts active today
+      const activeWorkShifts = await prisma.workShift.findMany({
+        where: {
+          days: {
+            has: todayName,
+          },
+        },
+        include: {
+          employees: true,
+        },
+      });
+      
+      // Get all employees who should be working today based on work shifts and rosters
+      const employeesWithShifts = new Set<string>();
+      
+      // Add employees from work shifts
+      activeWorkShifts.forEach(shift => {
+        shift.employees.forEach(employee => {
+          employeesWithShifts.add(employee.id);
+        });
+      });
+      
+      // Add employees from active rosters
+      const activeRosters = await prisma.roster.findMany({
+        where: {
+          startDate: {
+            lte: todayEnd,
+          },
+          OR: [
+            { endDate: null },
+            { endDate: { gte: todayStart } },
+          ],
+          workShift: {
+            days: {
+              has: todayName,
+            },
+          },
+        },
+        include: {
+          user: true,
+        },
+      });
+      
+      activeRosters.forEach(roster => {
+        employeesWithShifts.add(roster.userId);
+      });
+      
+      // If no employees are scheduled, use all employees as fallback
+      const expectedEmployeeCount = employeesWithShifts.size > 0 ? employeesWithShifts.size : totalUsers;
+      
       // Get today's attendance breakdown
       const presentCount = await prisma.attendance.count({
         where: {
@@ -73,9 +128,8 @@ export default async function handler(
         },
       });
 
-      // Calculate absent count (this is a simplification - in a real app you'd need to consider scheduled employees)
-      // For now, we'll assume all users should be present
-      const absentCount = totalUsers - (presentCount + lateCount);
+      // Calculate absent count based on scheduled employees
+      const absentCount = expectedEmployeeCount - (presentCount + lateCount);
 
       // Get recent check-ins
       const recentCheckIns = await prisma.attendance.findMany({

@@ -89,15 +89,87 @@ export default async function handler(
           return res.status(400).json({ error: 'You already have an active check-in' });
         }
 
+        // Get the current time
+        const now = new Date();
+        
+        // Check if the user has a work shift for today
+        const today = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const todayName = dayNames[today];
+        
+        // Find the user's work shift for today
+        const userWorkShift = await prisma.workShift.findFirst({
+          where: {
+            days: {
+              has: todayName,
+            },
+            employees: {
+              some: {
+                id: user.id,
+              },
+            },
+          },
+        });
+        
+        // Find the user's roster assignment for today
+        const userRoster = await prisma.roster.findFirst({
+          where: {
+            userId: user.id,
+            startDate: {
+              lte: now,
+            },
+            OR: [
+              { endDate: null },
+              { endDate: { gte: now } },
+            ],
+            workShift: {
+              days: {
+                has: todayName,
+              },
+            },
+          },
+          include: {
+            workShift: true,
+          },
+        });
+        
+        // Determine if the user is late based on work shift or roster
+        let isLate = false;
+        let workShiftStartTime = null;
+        
+        if (userRoster) {
+          // User has a roster assignment for today
+          workShiftStartTime = userRoster.workShift.startTime;
+        } else if (userWorkShift) {
+          // User has a work shift for today
+          workShiftStartTime = userWorkShift.startTime;
+        }
+        
+        if (workShiftStartTime) {
+          // Parse the work shift start time (format: "HH:MM")
+          const [hours, minutes] = workShiftStartTime.split(':').map(Number);
+          
+          // Create a Date object for the work shift start time today
+          const shiftStartTime = new Date();
+          shiftStartTime.setHours(hours, minutes, 0, 0);
+          
+          // Add a 15-minute grace period
+          const graceEndTime = new Date(shiftStartTime);
+          graceEndTime.setMinutes(graceEndTime.getMinutes() + 15);
+          
+          // Check if current time is after grace period
+          isLate = now > graceEndTime;
+        }
+        
         // Create new attendance record
         const attendance = await prisma.attendance.create({
           data: {
             userId: user.id,
             locationId,
-            checkInTime: new Date(),
+            checkInTime: now,
             checkInLatitude: parseFloat(latitude),
             checkInLongitude: parseFloat(longitude),
-            status: 'PRESENT', // Default status
+            status: isLate ? 'LATE' : 'PRESENT',
           },
         });
 

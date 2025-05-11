@@ -27,7 +27,10 @@ import {
   FaUserClock,
   FaMapMarkerAlt,
   FaCheck,
-  FaTimes
+  FaTimes,
+  FaFilePdf,
+  FaWhatsapp,
+  FaShareAlt
 } from 'react-icons/fa';
 import { format, parseISO, isToday, isYesterday, isThisWeek, isThisMonth } from 'date-fns';
 
@@ -134,6 +137,16 @@ const AttendanceReports: React.FC = () => {
     return `${hours}h ${minutes}m`;
   };
 
+  // State for PDF generation
+  const [generatingPDF, setGeneratingPDF] = useState<boolean>(false);
+  const [pdfData, setPdfData] = useState<any>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedDateRange, setSelectedDateRange] = useState<{start: Date, end: Date}>({
+    start: new Date(new Date().setDate(new Date().getDate() - 30)),
+    end: new Date()
+  });
+  const [showPdfDialog, setShowPdfDialog] = useState<boolean>(false);
+
   // Export attendance data as CSV
   const exportToCSV = () => {
     const headers = ['Employee', 'Email', 'Location', 'Check In', 'Check Out', 'Duration', 'Status'];
@@ -162,6 +175,175 @@ const AttendanceReports: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Generate PDF data
+  const generatePDFData = async () => {
+    try {
+      setGeneratingPDF(true);
+      
+      const response = await fetch('/api/attendance/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: selectedUserId || undefined,
+          startDate: selectedDateRange.start.toISOString(),
+          endDate: selectedDateRange.end.toISOString(),
+          includeDetails: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate PDF data');
+      }
+
+      const data = await response.json();
+      setPdfData(data);
+      setShowPdfDialog(true);
+    } catch (error: any) {
+      console.error('Error generating PDF data:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to generate PDF data',
+      });
+    } finally {
+      setGeneratingPDF(false);
+    }
+  };
+
+  // Download PDF
+  const downloadPDF = () => {
+    if (!pdfData) return;
+    
+    // In a real implementation, you would use a library like jsPDF or pdfmake
+    // to generate a proper PDF file. For this example, we'll create a simple HTML
+    // representation and convert it to a PDF-like download.
+    
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${pdfData.reportTitle}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          h1 { color: #333; }
+          table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background-color: #f2f2f2; }
+          .summary { margin: 20px 0; }
+          .summary div { margin: 5px 0; }
+          .header { display: flex; justify-content: space-between; }
+          .footer { margin-top: 30px; font-size: 0.8em; color: #666; }
+        </style>
+      </head>
+      <body>
+        <h1>${pdfData.reportTitle}</h1>
+        
+        <div class="header">
+          <div>
+            <h2>Employee Information</h2>
+            <div>Name: ${pdfData.employeeInfo.name}</div>
+            <div>Email: ${pdfData.employeeInfo.email}</div>
+            <div>Department: ${pdfData.employeeInfo.department}</div>
+            <div>Position: ${pdfData.employeeInfo.position}</div>
+          </div>
+        </div>
+        
+        <div class="summary">
+          <h2>Attendance Summary</h2>
+          <div>Total Days: ${pdfData.summary.totalDays}</div>
+          <div>Present Days: ${pdfData.summary.presentDays}</div>
+          <div>Late Days: ${pdfData.summary.lateDays}</div>
+          <div>Absent Days: ${pdfData.summary.absentDays}</div>
+          <div>Attendance Rate: ${pdfData.summary.attendanceRate}%</div>
+          <div>Punctuality Rate: ${pdfData.summary.punctualityRate}%</div>
+          <div>Average Work Hours: ${pdfData.summary.averageWorkHours} hours</div>
+        </div>
+        
+        <h2>Attendance Details</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Location</th>
+              <th>Check In</th>
+              <th>Check Out</th>
+              <th>Duration</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pdfData.attendances.map(att => `
+              <tr>
+                <td>${att.date}</td>
+                <td>${att.location}</td>
+                <td>${att.checkIn}</td>
+                <td>${att.checkOut}</td>
+                <td>${att.duration}</td>
+                <td>${att.status}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        
+        <div class="footer">
+          <div>Generated at: ${pdfData.generatedAt}</div>
+          <div>Generated by: ${pdfData.generatedBy}</div>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `attendance_report_${format(new Date(), 'yyyy-MM-dd')}.html`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: 'Success',
+      description: 'Attendance report downloaded successfully',
+    });
+  };
+
+  // Share via WhatsApp
+  const shareViaWhatsApp = () => {
+    if (!pdfData) return;
+    
+    // Create a summary text for WhatsApp
+    const summaryText = `
+*${pdfData.reportTitle}*
+
+*Employee:* ${pdfData.employeeInfo.name}
+*Department:* ${pdfData.employeeInfo.department}
+*Position:* ${pdfData.employeeInfo.position}
+
+*Attendance Summary:*
+- Total Days: ${pdfData.summary.totalDays}
+- Present: ${pdfData.summary.presentDays} days (${pdfData.summary.attendanceRate}%)
+- Late: ${pdfData.summary.lateDays} days
+- Absent: ${pdfData.summary.absentDays} days
+- Average Work Hours: ${pdfData.summary.averageWorkHours} hours
+
+Generated at: ${pdfData.generatedAt}
+    `.trim();
+    
+    // Encode the text for a URL
+    const encodedText = encodeURIComponent(summaryText);
+    
+    // Create WhatsApp URL
+    const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+    
+    // Open WhatsApp in a new window
+    window.open(whatsappUrl, '_blank');
   };
 
   // Filter attendances based on search term, status, date, and location
@@ -207,15 +389,30 @@ const AttendanceReports: React.FC = () => {
               View and analyze employee attendance records
             </CardDescription>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={exportToCSV}
-            disabled={filteredAttendances.length === 0}
-          >
-            <FaDownload className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={exportToCSV}
+              disabled={filteredAttendances.length === 0}
+            >
+              <FaDownload className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
+            <Button 
+              variant="default" 
+              size="sm"
+              onClick={generatePDFData}
+              disabled={generatingPDF}
+            >
+              {generatingPDF ? (
+                <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FaFilePdf className="mr-2 h-4 w-4" />
+              )}
+              Generate PDF
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -353,6 +550,122 @@ const AttendanceReports: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* PDF Report Dialog */}
+      <Dialog open={showPdfDialog} onOpenChange={setShowPdfDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Attendance Report</DialogTitle>
+            <DialogDescription>
+              Preview and download the attendance report or share it via WhatsApp
+            </DialogDescription>
+          </DialogHeader>
+          
+          {pdfData && (
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              <div className="border rounded-md p-4 bg-muted/30">
+                <h3 className="text-lg font-semibold">{pdfData.reportTitle}</h3>
+                
+                <div className="mt-4 space-y-2">
+                  <h4 className="font-medium">Employee Information</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>Name: <span className="font-medium">{pdfData.employeeInfo.name}</span></div>
+                    <div>Email: <span className="font-medium">{pdfData.employeeInfo.email}</span></div>
+                    <div>Department: <span className="font-medium">{pdfData.employeeInfo.department}</span></div>
+                    <div>Position: <span className="font-medium">{pdfData.employeeInfo.position}</span></div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 space-y-2">
+                  <h4 className="font-medium">Attendance Summary</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>Total Days: <span className="font-medium">{pdfData.summary.totalDays}</span></div>
+                    <div>Present Days: <span className="font-medium">{pdfData.summary.presentDays}</span></div>
+                    <div>Late Days: <span className="font-medium">{pdfData.summary.lateDays}</span></div>
+                    <div>Absent Days: <span className="font-medium">{pdfData.summary.absentDays}</span></div>
+                    <div>Attendance Rate: <span className="font-medium">{pdfData.summary.attendanceRate}%</span></div>
+                    <div>Punctuality Rate: <span className="font-medium">{pdfData.summary.punctualityRate}%</span></div>
+                    <div>Average Work Hours: <span className="font-medium">{pdfData.summary.averageWorkHours} hours</span></div>
+                  </div>
+                </div>
+                
+                {pdfData.attendances.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <h4 className="font-medium">Attendance Details</h4>
+                    <div className="text-xs text-muted-foreground">
+                      Showing first 5 of {pdfData.attendances.length} records
+                    </div>
+                    <div className="border rounded-md overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted">
+                          <tr>
+                            <th className="p-2 text-left">Date</th>
+                            <th className="p-2 text-left">Check In</th>
+                            <th className="p-2 text-left">Check Out</th>
+                            <th className="p-2 text-left">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pdfData.attendances.slice(0, 5).map((att: any, index: number) => (
+                            <tr key={index} className="border-t">
+                              <td className="p-2">{att.date}</td>
+                              <td className="p-2">{att.checkIn}</td>
+                              <td className="p-2">{att.checkOut}</td>
+                              <td className="p-2">
+                                <span className={`px-2 py-1 rounded-full text-xs ${
+                                  att.status === 'PRESENT' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : att.status === 'LATE' 
+                                      ? 'bg-yellow-100 text-yellow-800' 
+                                      : att.status === 'ABSENT'
+                                        ? 'bg-red-100 text-red-800'
+                                        : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {att.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="mt-4 text-xs text-muted-foreground">
+                  Generated at: {pdfData.generatedAt} • Generated by: {pdfData.generatedBy}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowPdfDialog(false)}
+              className="sm:order-1"
+            >
+              Close
+            </Button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button 
+                onClick={downloadPDF}
+                className="flex-1 sm:flex-none"
+              >
+                <FaDownload className="mr-2 h-4 w-4" />
+                Download
+              </Button>
+              <Button 
+                onClick={shareViaWhatsApp}
+                className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700"
+              >
+                <FaWhatsapp className="mr-2 h-4 w-4" />
+                Share via WhatsApp
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -12,7 +12,9 @@ import {
   FaUsers, 
   FaChartBar, 
   FaTachometerAlt,
-  FaCalendarAlt
+  FaCalendarAlt,
+  FaClock,
+  FaCalendarWeek
 } from "react-icons/fa";
 import AttendanceCheckInOut from "@/components/AttendanceCheckInOut";
 import LocationManagement from "@/components/LocationManagement";
@@ -21,6 +23,8 @@ import UserManagement from "@/components/UserManagement";
 import AttendanceReports from "@/components/AttendanceReports";
 import DashboardOverview from "@/components/DashboardOverview";
 import AdminLeaveManagement from "@/components/AdminLeaveManagement";
+import WorkShiftManagement from "@/components/WorkShiftManagement";
+import RosterManagement from "@/components/RosterManagement";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -95,7 +99,7 @@ export default function AdminDashboard() {
           </div>
 
           <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList className="grid grid-cols-4 md:grid-cols-7 lg:w-auto">
+            <TabsList className="grid grid-cols-4 md:grid-cols-9 lg:w-auto">
               <TabsTrigger value="overview">
                 <FaTachometerAlt className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Overview</span>
@@ -120,6 +124,16 @@ export default function AdminDashboard() {
                 <FaUserClock className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">My Attendance</span>
               </TabsTrigger>
+              <TabsTrigger value="work-shifts">
+                <FaClock className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Work Shifts</span>
+              </TabsTrigger>
+              
+              <TabsTrigger value="roster">
+                <FaCalendarWeek className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Roster</span>
+              </TabsTrigger>
+              
               <TabsTrigger value="profile">
                 <FaUserEdit className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Profile</span>
@@ -148,6 +162,14 @@ export default function AdminDashboard() {
             
             <TabsContent value="attendance" className="space-y-4">
               <AttendanceCheckInOut />
+            </TabsContent>
+            
+            <TabsContent value="work-shifts" className="space-y-4">
+              <WorkShiftManagement />
+            </TabsContent>
+            
+            <TabsContent value="roster" className="space-y-4">
+              <RosterManagement />
             </TabsContent>
             
             <TabsContent value="profile" className="space-y-4">

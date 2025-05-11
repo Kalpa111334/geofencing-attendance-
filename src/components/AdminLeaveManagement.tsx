@@ -13,7 +13,21 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { FaCalendarAlt, FaFileDownload, FaSpinner, FaCheck, FaTimes, FaFilter, FaUser, FaBuilding, FaCalendar } from 'react-icons/fa';
+import { 
+  FaCalendarAlt, 
+  FaFileDownload, 
+  FaSpinner, 
+  FaCheck, 
+  FaTimes, 
+  FaFilter, 
+  FaUser, 
+  FaBuilding, 
+  FaCalendar,
+  FaBroom,
+  FaWhatsapp,
+  FaFilePdf,
+  FaShareAlt
+} from 'react-icons/fa';
 import { format, addDays, subDays } from 'date-fns';
 
 interface User {
@@ -92,6 +106,8 @@ const AdminLeaveManagement: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [showRejectionDialog, setShowRejectionDialog] = useState<boolean>(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState<boolean>(false);
+  const [showShareDialog, setShowShareDialog] = useState<boolean>(false);
+  const [initializingLeaveTypes, setInitializingLeaveTypes] = useState<boolean>(false);
   
   // State for report generation
   const [reportType, setReportType] = useState<string>('summary');
@@ -102,9 +118,16 @@ const AdminLeaveManagement: React.FC = () => {
   const [reportLeaveType, setReportLeaveType] = useState<string>('');
   const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false);
   
+  // State for WhatsApp sharing
+  const [generatingReport, setGeneratingReport] = useState<boolean>(false);
+  const [reportData, setReportData] = useState<any>(null);
+  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  
   // Initialize leave types
   const handleInitializeLeaveTypes = async () => {
     try {
+      setInitializingLeaveTypes(true);
       const response = await fetch('/api/leave-types/init', {
         method: 'POST',
         headers: {
@@ -131,6 +154,8 @@ const AdminLeaveManagement: React.FC = () => {
         title: 'Error',
         description: error.message || 'Failed to initialize leave types',
       });
+    } finally {
+      setInitializingLeaveTypes(false);
     }
   };
 
@@ -554,6 +579,78 @@ const AdminLeaveManagement: React.FC = () => {
     }
   };
   
+  // Generate leave report for WhatsApp sharing
+  const generateLeaveReport = async () => {
+    try {
+      setGeneratingReport(true);
+      
+      const response = await fetch('/api/leave-reports/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: selectedUserId || undefined,
+          year: selectedYear,
+          includeDetails: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate leave report');
+      }
+
+      const data = await response.json();
+      setReportData(data);
+    } catch (error: any) {
+      console.error('Error generating leave report:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to generate leave report',
+      });
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
+  // Share leave report via WhatsApp
+  const shareLeaveReportViaWhatsApp = () => {
+    if (!reportData) return;
+    
+    // Create a summary text for WhatsApp
+    const summaryText = `
+*${reportData.reportTitle}*
+
+*Employee:* ${reportData.employeeInfo.name}
+*Department:* ${reportData.employeeInfo.department}
+*Position:* ${reportData.employeeInfo.position}
+
+*Leave Summary:*
+- Total Requested: ${reportData.summary.totalLeavesRequested} days
+- Total Taken: ${reportData.summary.totalLeavesTaken} days
+- Pending: ${reportData.summary.pendingLeaves} days
+- Approved: ${reportData.summary.approvedLeaves} days
+
+*Leave Balances:*
+${reportData.leaveBalances.map((balance: any) => 
+  `- ${balance.leaveType}: ${balance.remainingDays} days remaining`
+).join('\n')}
+
+Generated at: ${reportData.generatedAt}
+    `.trim();
+    
+    // Encode the text for a URL
+    const encodedText = encodeURIComponent(summaryText);
+    
+    // Create WhatsApp URL
+    const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+    
+    // Open WhatsApp in a new window
+    window.open(whatsappUrl, '_blank');
+  };
+  
   // Format date for display
   const formatDateDisplay = (dateString: string) => {
     return format(new Date(dateString), 'MMM dd, yyyy');
@@ -609,15 +706,25 @@ const AdminLeaveManagement: React.FC = () => {
                     Manage employee leave requests
                   </CardDescription>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleInitializeLeaveTypes}
-                  className="flex items-center gap-2"
-                >
-                  <FaCalendarAlt className="h-4 w-4" />
-                  Clean Up Leave Types
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleInitializeLeaveTypes}
+                    disabled={initializingLeaveTypes}
+                  >
+                    <FaBroom className="mr-2 h-4 w-4" />
+                    Clean Up Leave Types
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowShareDialog(true)}
+                  >
+                    <FaShareAlt className="mr-2 h-4 w-4" />
+                    Share Leave Report
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -1019,6 +1126,132 @@ const AdminLeaveManagement: React.FC = () => {
                       Reject
                     </Button>
                   </>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Share Leave Report Dialog */}
+          <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Share Leave Summary Report</DialogTitle>
+                <DialogDescription>
+                  Generate and share a leave summary report for an employee
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="employee">Select Employee</Label>
+                  <Select 
+                    value={selectedUserId} 
+                    onValueChange={setSelectedUserId}
+                  >
+                    <SelectTrigger id="employee">
+                      <SelectValue placeholder="Select an employee" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Employees</SelectItem>
+                      {employees.map((emp) => (
+                        <SelectItem key={emp.id} value={emp.id}>
+                          {getEmployeeName(emp)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="year">Year</Label>
+                  <Select 
+                    value={selectedYear} 
+                    onValueChange={setSelectedYear}
+                  >
+                    <SelectTrigger id="year">
+                      <SelectValue placeholder="Select year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 5 }, (_, i) => {
+                        const year = new Date().getFullYear() - i;
+                        return (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {reportData && (
+                  <div className="border rounded-md p-4 bg-muted/30 space-y-3">
+                    <h3 className="text-lg font-semibold">{reportData.reportTitle}</h3>
+                    
+                    <div className="space-y-1">
+                      <h4 className="font-medium">Employee: {reportData.employeeInfo.name}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {reportData.employeeInfo.department} • {reportData.employeeInfo.position}
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <h4 className="font-medium">Leave Summary</h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>Total Requested: <span className="font-medium">{reportData.summary.totalLeavesRequested} days</span></div>
+                        <div>Total Taken: <span className="font-medium">{reportData.summary.totalLeavesTaken} days</span></div>
+                        <div>Pending: <span className="font-medium">{reportData.summary.pendingLeaves} days</span></div>
+                        <div>Approved: <span className="font-medium">{reportData.summary.approvedLeaves} days</span></div>
+                      </div>
+                    </div>
+                    
+                    {reportData.leaveBalances.length > 0 && (
+                      <div className="space-y-1">
+                        <h4 className="font-medium">Leave Balances</h4>
+                        <div className="text-sm space-y-1">
+                          {reportData.leaveBalances.map((balance: any, index: number) => (
+                            <div key={index} className="flex justify-between">
+                              <span>{balance.leaveType}:</span>
+                              <span className="font-medium">{balance.remainingDays} days remaining</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowShareDialog(false)}
+                  className="sm:order-1"
+                >
+                  Close
+                </Button>
+                
+                {reportData ? (
+                  <Button 
+                    onClick={shareLeaveReportViaWhatsApp}
+                    className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700"
+                  >
+                    <FaWhatsapp className="mr-2 h-4 w-4" />
+                    Share via WhatsApp
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={generateLeaveReport}
+                    disabled={generatingReport}
+                    className="flex-1 sm:flex-none"
+                  >
+                    {generatingReport ? (
+                      <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <FaFilePdf className="mr-2 h-4 w-4" />
+                    )}
+                    Generate Report
+                  </Button>
                 )}
               </DialogFooter>
             </DialogContent>

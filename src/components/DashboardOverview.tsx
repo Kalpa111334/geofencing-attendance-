@@ -198,9 +198,14 @@ const DashboardOverview: React.FC = () => {
                     ? Math.round(((stats.todayAttendance.present + stats.todayAttendance.late) / stats.todayAttendance.total) * 100) 
                     : 0}%
                 </h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {stats.todayAttendance.present} present, {stats.todayAttendance.late} late
-                </p>
+                <div className="flex flex-col text-xs text-muted-foreground mt-1">
+                  <span>
+                    <span className="text-green-600 font-medium">{stats.todayAttendance.present}</span> present
+                  </span>
+                  <span>
+                    <span className="text-yellow-600 font-medium">{stats.todayAttendance.late}</span> late
+                  </span>
+                </div>
               </div>
               <div className="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center">
                 <FaUserClock className="h-6 w-6 text-yellow-600" />
@@ -255,14 +260,29 @@ const DashboardOverview: React.FC = () => {
                   : 0}%</span>
               </div>
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-green-500 to-primary" 
-                  style={{ 
-                    width: `${stats.todayAttendance.total > 0 
-                      ? Math.round(((stats.todayAttendance.present + stats.todayAttendance.late) / stats.todayAttendance.total) * 100) 
-                      : 0}%` 
-                  }}
-                />
+                <div className="flex h-full">
+                  <div 
+                    className="h-full bg-green-500" 
+                    style={{ 
+                      width: `${stats.todayAttendance.total > 0 
+                        ? Math.round((stats.todayAttendance.present / stats.todayAttendance.total) * 100) 
+                        : 0}%` 
+                    }}
+                  />
+                  <div 
+                    className="h-full bg-yellow-500" 
+                    style={{ 
+                      width: `${stats.todayAttendance.total > 0 
+                        ? Math.round((stats.todayAttendance.late / stats.todayAttendance.total) * 100) 
+                        : 0}%` 
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-between text-xs mt-1">
+                <span className="text-green-600">Present: {stats.todayAttendance.present}</span>
+                <span className="text-yellow-600">Late: {stats.todayAttendance.late}</span>
+                <span className="text-red-600">Absent: {stats.todayAttendance.absent}</span>
               </div>
             </div>
           </div>
