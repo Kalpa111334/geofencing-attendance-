@@ -590,7 +590,7 @@ const AdminLeaveManagement: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: selectedUserId || undefined,
+          userId: selectedUserId === "all_employees" ? undefined : selectedUserId,
           year: selectedYear,
           includeDetails: true,
         }),
@@ -790,7 +790,7 @@ Generated at: ${reportData.generatedAt}
                         <SelectValue placeholder="Filter by employee" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ALL">All Employees</SelectItem>
+                        <SelectItem value="all_employees">All Employees</SelectItem>
                         {employees.map((emp) => (
                           <SelectItem key={emp.id} value={emp.id}>
                             {getEmployeeName(emp)}
