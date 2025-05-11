@@ -312,76 +312,77 @@ const WorkShiftManagement: React.FC = () => {
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
-                <TableBody>
-                  {workShifts.map((workShift) => (
-                    <TableRow key={workShift.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex flex-col">
-                          <span>{workShift.name}</span>
-                          {workShift.description && (
-                            <span className="text-xs text-muted-foreground">
-                              {workShift.description}
-                            </span>
-                          )}
-                          <div className="sm:hidden text-xs text-muted-foreground mt-1">
-                            <div className="flex items-center">
-                              <FaClock className="mr-1 h-3 w-3" />
-                              {formatTime(workShift.startTime)} - {formatTime(workShift.endTime)}
+                  <TableBody>
+                    {workShifts.map((workShift) => (
+                      <TableRow key={workShift.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex flex-col">
+                            <span>{workShift.name}</span>
+                            {workShift.description && (
+                              <span className="text-xs text-muted-foreground">
+                                {workShift.description}
+                              </span>
+                            )}
+                            <div className="sm:hidden text-xs text-muted-foreground mt-1">
+                              <div className="flex items-center">
+                                <FaClock className="mr-1 h-3 w-3" />
+                                {formatTime(workShift.startTime)} - {formatTime(workShift.endTime)}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <div className="flex items-center">
-                          <FaClock className="mr-2 h-3 w-3 text-muted-foreground" />
-                          {formatTime(workShift.startTime)} - {formatTime(workShift.endTime)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <div className="flex items-center">
-                          <FaCalendarDay className="mr-2 h-3 w-3 text-muted-foreground" />
-                          <span className="text-sm">
-                            {workShift.days.length === 7 
-                              ? 'All days' 
-                              : workShift.days.length === 5 && workShift.days.includes('Monday') && workShift.days.includes('Friday')
-                                ? 'Weekdays'
-                                : workShift.days.join(', ')}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <div className="flex items-center">
-                          <FaUsers className="mr-2 h-3 w-3 text-muted-foreground" />
-                          <span className="text-sm">
-                            {workShift.employees.length} assigned
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => prepareEdit(workShift)}
-                          >
-                            <FaEdit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={() => {
-                              setSelectedWorkShift(workShift);
-                              setShowDeleteDialog(true);
-                            }}
-                          >
-                            <FaTrash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <div className="flex items-center">
+                            <FaClock className="mr-2 h-3 w-3 text-muted-foreground" />
+                            {formatTime(workShift.startTime)} - {formatTime(workShift.endTime)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <div className="flex items-center">
+                            <FaCalendarDay className="mr-2 h-3 w-3 text-muted-foreground" />
+                            <span className="text-sm">
+                              {workShift.days.length === 7 
+                                ? 'All days' 
+                                : workShift.days.length === 5 && workShift.days.includes('Monday') && workShift.days.includes('Friday')
+                                  ? 'Weekdays'
+                                  : workShift.days.join(', ')}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <div className="flex items-center">
+                            <FaUsers className="mr-2 h-3 w-3 text-muted-foreground" />
+                            <span className="text-sm">
+                              {workShift.employees.length} assigned
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => prepareEdit(workShift)}
+                            >
+                              <FaEdit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedWorkShift(workShift);
+                                setShowDeleteDialog(true);
+                              }}
+                            >
+                              <FaTrash className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
