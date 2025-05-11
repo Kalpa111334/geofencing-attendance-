@@ -1152,7 +1152,7 @@ Generated at: ${reportData.generatedAt}
                       <SelectValue placeholder="Select an employee" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Employees</SelectItem>
+                      <SelectItem value="all_employees">All Employees</SelectItem>
                       {employees.map((emp) => (
                         <SelectItem key={emp.id} value={emp.id}>
                           {getEmployeeName(emp)}
