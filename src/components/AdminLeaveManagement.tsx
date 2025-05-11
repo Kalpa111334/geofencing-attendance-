@@ -737,7 +737,7 @@ Generated at: ${reportData.generatedAt}
                   </Button>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* Status Filter */}
                   <div>
                     <Label htmlFor="statusFilter">Status</Label>
@@ -882,74 +882,76 @@ Generated at: ${reportData.generatedAt}
                   <FaSpinner className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : filteredRequests.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Employee</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Leave Type</TableHead>
-                      <TableHead>Dates</TableHead>
-                      <TableHead>Days</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredRequests.map((request) => (
-                      <TableRow key={request.id}>
-                        <TableCell>{getEmployeeName(request.user)}</TableCell>
-                        <TableCell>{request.user.department || 'N/A'}</TableCell>
-                        <TableCell>{request.leaveType.name}</TableCell>
-                        <TableCell>
-                          {formatDateDisplay(request.startDate)} - {formatDateDisplay(request.endDate)}
-                        </TableCell>
-                        <TableCell>{request.totalDays}</TableCell>
-                        <TableCell>{getStatusBadge(request.status)}</TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openDetailsDialog(request)}
-                            >
-                              View
-                            </Button>
-                            
-                            {request.status === 'PENDING' && (
-                              <>
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  onClick={() => handleApproveRequest(request.id)}
-                                  disabled={isProcessing}
-                                >
-                                  {isProcessing ? (
-                                    <FaSpinner className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <FaCheck className="h-4 w-4" />
-                                  )}
-                                </Button>
-                                
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => openRejectionDialog(request)}
-                                  disabled={isProcessing}
-                                >
-                                  {isProcessing ? (
-                                    <FaSpinner className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <FaTimes className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Employee</TableHead>
+                        <TableHead className="hidden md:table-cell">Department</TableHead>
+                        <TableHead className="hidden sm:table-cell">Leave Type</TableHead>
+                        <TableHead className="hidden lg:table-cell">Dates</TableHead>
+                        <TableHead className="hidden md:table-cell">Days</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredRequests.map((request) => (
+                        <TableRow key={request.id}>
+                          <TableCell>{getEmployeeName(request.user)}</TableCell>
+                          <TableCell className="hidden md:table-cell">{request.user.department || 'N/A'}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{request.leaveType.name}</TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            {formatDateDisplay(request.startDate)} - {formatDateDisplay(request.endDate)}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">{request.totalDays}</TableCell>
+                          <TableCell>{getStatusBadge(request.status)}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openDetailsDialog(request)}
+                              >
+                                View
+                              </Button>
+                              
+                              {request.status === 'PENDING' && (
+                                <>
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    onClick={() => handleApproveRequest(request.id)}
+                                    disabled={isProcessing}
+                                  >
+                                    {isProcessing ? (
+                                      <FaSpinner className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <FaCheck className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                  
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => openRejectionDialog(request)}
+                                    disabled={isProcessing}
+                                  >
+                                    {isProcessing ? (
+                                      <FaSpinner className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <FaTimes className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   No leave requests found matching the filters

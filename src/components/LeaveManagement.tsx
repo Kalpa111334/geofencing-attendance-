@@ -374,20 +374,22 @@ const LeaveManagement: React.FC = () => {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="request" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="request">
-            <FaCalendarAlt className="mr-2 h-4 w-4" />
-            Request Leave
-          </TabsTrigger>
-          <TabsTrigger value="balance">
-            <FaInfoCircle className="mr-2 h-4 w-4" />
-            Leave Balance
-          </TabsTrigger>
-          <TabsTrigger value="history">
-            <FaCheck className="mr-2 h-4 w-4" />
-            Leave History
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-2">
+          <TabsList className="w-full sm:w-auto">
+            <TabsTrigger value="request" className="flex-1 sm:flex-none">
+              <FaCalendarAlt className="mr-2 h-4 w-4" />
+              Request Leave
+            </TabsTrigger>
+            <TabsTrigger value="balance" className="flex-1 sm:flex-none">
+              <FaInfoCircle className="mr-2 h-4 w-4" />
+              Leave Balance
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex-1 sm:flex-none">
+              <FaCheck className="mr-2 h-4 w-4" />
+              Leave History
+            </TabsTrigger>
+          </TabsList>
+        </div>
         
         {/* Leave Request Form */}
         <TabsContent value="request">
@@ -479,28 +481,30 @@ const LeaveManagement: React.FC = () => {
                   {/* Date Range */}
                   <div className="space-y-2">
                     <Label>Date Range *</Label>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <div className="flex-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
                         <Label htmlFor="startDate" className="text-xs">Start Date</Label>
-                        <div className="border rounded-md p-2">
+                        <div className="border rounded-md p-2 overflow-x-auto">
                           <Calendar
                             mode="single"
                             selected={startDate}
                             onSelect={setStartDate}
                             disabled={isSubmitting}
                             initialFocus
+                            className="mx-auto"
                           />
                         </div>
                       </div>
-                      <div className="flex-1">
+                      <div>
                         <Label htmlFor="endDate" className="text-xs">End Date</Label>
-                        <div className="border rounded-md p-2">
+                        <div className="border rounded-md p-2 overflow-x-auto">
                           <Calendar
                             mode="single"
                             selected={endDate}
                             onSelect={setEndDate}
                             disabled={isSubmitting || !startDate}
                             initialFocus
+                            className="mx-auto"
                           />
                         </div>
                       </div>
@@ -757,45 +761,47 @@ const LeaveManagement: React.FC = () => {
                   <FaSpinner className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : leaveHistory.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Leave Type</TableHead>
-                      <TableHead>Dates</TableHead>
-                      <TableHead>Days</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {leaveHistory.map((leave) => (
-                      <TableRow key={leave.id}>
-                        <TableCell>{leave.leaveType.name}</TableCell>
-                        <TableCell>
-                          {formatDateDisplay(leave.startDate)} - {formatDateDisplay(leave.endDate)}
-                        </TableCell>
-                        <TableCell>{leave.totalDays}</TableCell>
-                        <TableCell>{getStatusBadge(leave.status)}</TableCell>
-                        <TableCell>
-                          {leave.status === 'PENDING' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleCancelRequest(leave.id)}
-                            >
-                              Cancel
-                            </Button>
-                          )}
-                          {leave.status === 'REJECTED' && leave.rejectionReason && (
-                            <div className="text-xs text-red-500">
-                              Reason: {leave.rejectionReason}
-                            </div>
-                          )}
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Leave Type</TableHead>
+                        <TableHead className="hidden sm:table-cell">Dates</TableHead>
+                        <TableHead className="hidden md:table-cell">Days</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {leaveHistory.map((leave) => (
+                        <TableRow key={leave.id}>
+                          <TableCell>{leave.leaveType.name}</TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {formatDateDisplay(leave.startDate)} - {formatDateDisplay(leave.endDate)}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">{leave.totalDays}</TableCell>
+                          <TableCell>{getStatusBadge(leave.status)}</TableCell>
+                          <TableCell>
+                            {leave.status === 'PENDING' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleCancelRequest(leave.id)}
+                              >
+                                Cancel
+                              </Button>
+                            )}
+                            {leave.status === 'REJECTED' && leave.rejectionReason && (
+                              <div className="text-xs text-red-500 hidden sm:block">
+                                Reason: {leave.rejectionReason}
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   No leave history found

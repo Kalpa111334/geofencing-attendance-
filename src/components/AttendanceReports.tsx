@@ -390,41 +390,45 @@ Generated at: ${pdfData.generatedAt}
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div>
-            <CardTitle>Attendance Reports</CardTitle>
-            <CardDescription>
-              View and analyze employee attendance records
-            </CardDescription>
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={exportToCSV}
-              disabled={filteredAttendances.length === 0}
-            >
-              <FaDownload className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
-            <Button 
-              variant="default" 
-              size="sm"
-              onClick={generatePDFData}
-              disabled={generatingPDF}
-            >
-              {generatingPDF ? (
-                <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <FaFilePdf className="mr-2 h-4 w-4" />
-              )}
-              Generate PDF
-            </Button>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle>Attendance Reports</CardTitle>
+              <CardDescription>
+                View and analyze employee attendance records
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={exportToCSV}
+                disabled={filteredAttendances.length === 0}
+                className="flex-1 sm:flex-none"
+              >
+                <FaDownload className="mr-2 h-4 w-4" />
+                Export CSV
+              </Button>
+              <Button 
+                variant="default" 
+                size="sm"
+                onClick={generatePDFData}
+                disabled={generatingPDF}
+                className="flex-1 sm:flex-none"
+              >
+                {generatingPDF ? (
+                  <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <FaFilePdf className="mr-2 h-4 w-4" />
+                )}
+                Generate PDF
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
+          <div className="space-y-4 mb-6">
+            <div className="relative">
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search employees or locations..."
@@ -433,7 +437,7 @@ Generated at: ${pdfData.generatedAt}
                 className="pl-10"
               />
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Status" />
@@ -482,74 +486,76 @@ Generated at: ${pdfData.generatedAt}
             </div>
           ) : filteredAttendances.length > 0 ? (
             <div className="rounded-md border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Employee</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Check In</TableHead>
-                    <TableHead>Check Out</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAttendances.map((attendance) => (
-                    <TableRow key={attendance.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex flex-col">
-                          <span>
-                            {attendance.user.firstName && attendance.user.lastName 
-                              ? `${attendance.user.firstName} ${attendance.user.lastName}` 
-                              : 'Not set'}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {attendance.user.email}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <FaMapMarkerAlt className="mr-2 h-3 w-3 text-muted-foreground" />
-                          {attendance.location.name}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <FaUserClock className="mr-2 h-3 w-3 text-green-500" />
-                          {formatDate(attendance.checkInTime)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {attendance.checkOutTime ? (
-                          <div className="flex items-center">
-                            <FaUserClock className="mr-2 h-3 w-3 text-red-500" />
-                            {formatDate(attendance.checkOutTime)}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">In progress</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {calculateDuration(attendance.checkInTime, attendance.checkOutTime)}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          attendance.status === 'PRESENT' 
-                            ? 'bg-green-100 text-green-800' 
-                            : attendance.status === 'LATE' 
-                              ? 'bg-yellow-100 text-yellow-800' 
-                              : attendance.status === 'ABSENT'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {attendance.status}
-                        </span>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead className="hidden sm:table-cell">Location</TableHead>
+                      <TableHead>Check In</TableHead>
+                      <TableHead className="hidden md:table-cell">Check Out</TableHead>
+                      <TableHead className="hidden lg:table-cell">Duration</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredAttendances.map((attendance) => (
+                      <TableRow key={attendance.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex flex-col">
+                            <span>
+                              {attendance.user.firstName && attendance.user.lastName 
+                                ? `${attendance.user.firstName} ${attendance.user.lastName}` 
+                                : 'Not set'}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {attendance.user.email}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <div className="flex items-center">
+                            <FaMapMarkerAlt className="mr-2 h-3 w-3 text-muted-foreground" />
+                            {attendance.location.name}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <FaUserClock className="mr-2 h-3 w-3 text-green-500" />
+                            {formatDate(attendance.checkInTime)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {attendance.checkOutTime ? (
+                            <div className="flex items-center">
+                              <FaUserClock className="mr-2 h-3 w-3 text-red-500" />
+                              {formatDate(attendance.checkOutTime)}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">In progress</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {calculateDuration(attendance.checkInTime, attendance.checkOutTime)}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            attendance.status === 'PRESENT' 
+                              ? 'bg-green-100 text-green-800' 
+                              : attendance.status === 'LATE' 
+                                ? 'bg-yellow-100 text-yellow-800' 
+                                : attendance.status === 'ABSENT'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {attendance.status}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
