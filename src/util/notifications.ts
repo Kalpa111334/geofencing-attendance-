@@ -42,7 +42,7 @@ export const sendNotificationToUser = async (
     const payload = JSON.stringify({
       title,
       body,
-      icon: options.icon || '/images/notification-icon.png',
+      icon: options.icon || '/favicon.ico',
       tag: options.tag || 'default',
       requireInteraction: options.requireInteraction || false,
       data: {
@@ -55,22 +55,30 @@ export const sendNotificationToUser = async (
     const results = await Promise.allSettled(
       subscriptions.map(async (subscription) => {
         try {
-          await webpush.sendNotification({
+          // Create proper PushSubscription object format
+          const pushSubscription = {
             endpoint: subscription.endpoint,
             keys: {
               p256dh: subscription.p256dh,
               auth: subscription.auth,
-            },
-          }, payload);
+            }
+          };
+          
+          // Send notification with proper error handling
+          await webpush.sendNotification(pushSubscription, payload);
+          console.log(`Successfully sent notification to ${subscription.endpoint}`);
           return { success: true, endpoint: subscription.endpoint };
         } catch (error: any) {
+          console.error(`Error sending notification to ${subscription.endpoint}:`, error);
+          
           // If subscription is expired or invalid, remove it
           if (error.statusCode === 404 || error.statusCode === 410) {
             await prisma.notificationSubscription.delete({
               where: { endpoint: subscription.endpoint },
             });
+            console.log(`Deleted invalid subscription: ${subscription.endpoint}`);
           }
-          return { success: false, endpoint: subscription.endpoint, error };
+          return { success: false, endpoint: subscription.endpoint, error: error.message };
         }
       })
     );
@@ -80,7 +88,7 @@ export const sendNotificationToUser = async (
       data: {
         title,
         body,
-        icon: options.icon || '/images/notification-icon.png',
+        icon: options.icon || '/favicon.ico',
         url: options.url || '/dashboard',
         tag: options.tag,
         userId,

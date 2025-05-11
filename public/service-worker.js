@@ -6,8 +6,8 @@ self.addEventListener('push', function(event) {
     
     const options = {
       body: data.body || 'New notification',
-      icon: data.icon || '/images/notification-icon.png',
-      badge: data.badge || '/images/notification-badge.png',
+      icon: data.icon || '/favicon.ico',
+      badge: data.badge || '/favicon.ico',
       data: data.data || {},
       actions: data.actions || [],
       vibrate: [100, 50, 100],
