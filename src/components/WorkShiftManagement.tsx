@@ -452,7 +452,7 @@ const WorkShiftManagement: React.FC = () => {
             
             <div className="space-y-2">
               <Label>Working Days *</Label>
-              <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {daysOfWeek.map((day) => (
                   <div key={day} className="flex items-center space-x-2">
                     <Checkbox 

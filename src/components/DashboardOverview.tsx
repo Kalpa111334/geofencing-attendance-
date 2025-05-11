@@ -225,7 +225,7 @@ const DashboardOverview: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="flex flex-col items-center p-4 bg-green-50 rounded-lg">
                 <div className="flex items-center justify-center h-10 w-10 rounded-full bg-green-100 mb-2">
                   <FaUserCheck className="h-5 w-5 text-green-600" />

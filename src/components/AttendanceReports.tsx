@@ -391,7 +391,7 @@ Generated at: ${pdfData.generatedAt}
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <div>
               <CardTitle>Attendance Reports</CardTitle>
               <CardDescription>
