@@ -408,7 +408,7 @@ const LeaveManagement: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Leave Type */}
                   <div className="space-y-2">
@@ -427,9 +427,6 @@ const LeaveManagement: React.FC = () => {
                             <SelectItem value="custom">Enter New Leave Type</SelectItem>
                             {leaveTypes.length > 0 && (
                               <>
-                                <SelectItem value="divider" disabled>
-                                  ───── Previously Used ─────
-                                </SelectItem>
                                 {leaveTypes.map((type) => (
                                   <SelectItem key={type.id} value={type.id}>
                                     {type.name}
@@ -445,15 +442,16 @@ const LeaveManagement: React.FC = () => {
                       {selectedLeaveTypeId === 'custom' && (
                         <div className="pt-2">
                           <Label htmlFor="customLeaveType" className="text-xs mb-1 block">
-                            Enter Leave Type Name
+                            Enter Leave Type Name *
                           </Label>
                           <Input
                             id="customLeaveType"
                             placeholder="E.g., Sick Leave, Vacation, Family Emergency"
                             className="w-full"
                             value={customLeaveType}
-                            onChange={(e) => setCustomLeaveType(e.target.value.trim())}
+                            onChange={(e) => setCustomLeaveType(e.target.value)}
                             disabled={isSubmitting}
+                            required
                           />
                           <p className="text-xs text-muted-foreground mt-1">
                             Specify the type of leave you are requesting
@@ -597,15 +595,17 @@ const LeaveManagement: React.FC = () => {
                 </div>
               </form>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex justify-center">
               <Button
                 onClick={handleSubmit}
                 disabled={isSubmitting || (selectedLeaveTypeId === 'custom' && !customLeaveType) || !startDate || !endDate || reason.length < 50}
-                className="w-full"
+                className="w-full md:w-2/3 lg:w-1/2 py-6 text-lg"
+                size="lg"
+                type="button"
               >
                 {isSubmitting ? (
                   <>
-                    <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
+                    <FaSpinner className="mr-2 h-5 w-5 animate-spin" />
                     Submitting...
                   </>
                 ) : (
