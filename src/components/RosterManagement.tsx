@@ -317,14 +317,14 @@ const RosterManagement: React.FC = () => {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-2">
           <div>
             <CardTitle>Employee Roster Management</CardTitle>
             <CardDescription>
               Assign employees to work shifts and manage their schedules
             </CardDescription>
           </div>
-          <Button onClick={() => setIsCreating(true)}>
+          <Button onClick={() => setIsCreating(true)} className="w-full sm:w-auto">
             <FaPlus className="mr-2 h-4 w-4" />
             New Roster Assignment
           </Button>
@@ -336,27 +336,36 @@ const RosterManagement: React.FC = () => {
             </div>
           ) : rosters.length > 0 ? (
             <div className="rounded-md border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Employee</TableHead>
-                    <TableHead>Work Shift</TableHead>
-                    <TableHead>Start Date</TableHead>
-                    <TableHead>End Date</TableHead>
-                    <TableHead>Notes</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead className="hidden sm:table-cell">Work Shift</TableHead>
+                      <TableHead className="hidden md:table-cell">Start Date</TableHead>
+                      <TableHead className="hidden md:table-cell">End Date</TableHead>
+                      <TableHead className="hidden lg:table-cell">Notes</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
                 <TableBody>
                   {rosters.map((roster) => (
                     <TableRow key={roster.id}>
                       <TableCell className="font-medium">
-                        <div className="flex items-center">
-                          <FaUser className="mr-2 h-3 w-3 text-muted-foreground" />
-                          {getEmployeeName(roster.user)}
+                        <div className="flex flex-col">
+                          <div className="flex items-center">
+                            <FaUser className="mr-2 h-3 w-3 text-muted-foreground" />
+                            {getEmployeeName(roster.user)}
+                          </div>
+                          <div className="sm:hidden text-xs text-muted-foreground mt-1">
+                            <span>{roster.workShift.name}</span>
+                          </div>
+                          <div className="md:hidden text-xs text-muted-foreground">
+                            {formatDate(roster.startDate)}
+                          </div>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <div className="flex flex-col">
                           <span>{roster.workShift.name}</span>
                           <span className="text-xs text-muted-foreground">
@@ -364,13 +373,13 @@ const RosterManagement: React.FC = () => {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         {formatDate(roster.startDate)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         {roster.endDate ? formatDate(roster.endDate) : 'Ongoing'}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <div className="max-w-xs truncate">
                           {roster.notes || '-'}
                         </div>
@@ -463,7 +472,7 @@ const RosterManagement: React.FC = () => {
               </Select>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Start Date *</Label>
                 <Popover>

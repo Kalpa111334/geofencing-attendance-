@@ -348,15 +348,15 @@ const UserManagement: React.FC = () => {
               <FaSpinner className="animate-spin h-8 w-8 text-primary" />
             </div>
           ) : filteredUsers.length > 0 ? (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
+                    <TableHead className="hidden sm:table-cell">Email</TableHead>
                     <TableHead>Role</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Position</TableHead>
+                    <TableHead className="hidden md:table-cell">Department</TableHead>
+                    <TableHead className="hidden lg:table-cell">Position</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -364,11 +364,18 @@ const UserManagement: React.FC = () => {
                   {filteredUsers.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
-                        {user.firstName && user.lastName 
-                          ? `${user.firstName} ${user.lastName}` 
-                          : 'Not set'}
+                        <div className="flex flex-col">
+                          <span>
+                            {user.firstName && user.lastName 
+                              ? `${user.firstName} ${user.lastName}` 
+                              : 'Not set'}
+                          </span>
+                          <span className="sm:hidden text-xs text-muted-foreground">
+                            {user.email}
+                          </span>
+                        </div>
                       </TableCell>
-                      <TableCell>{user.email}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{user.email}</TableCell>
                       <TableCell>
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           user.role === 'ADMIN' 
@@ -380,8 +387,8 @@ const UserManagement: React.FC = () => {
                           {user.role}
                         </span>
                       </TableCell>
-                      <TableCell>{user.department || 'Not set'}</TableCell>
-                      <TableCell>{user.position || 'Not set'}</TableCell>
+                      <TableCell className="hidden md:table-cell">{user.department || 'Not set'}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{user.position || 'Not set'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
                           <Button 
@@ -414,7 +421,7 @@ const UserManagement: React.FC = () => {
                               </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                   <Label htmlFor="firstName">First Name</Label>
                                   <Input
@@ -469,16 +476,18 @@ const UserManagement: React.FC = () => {
                                 </Select>
                               </div>
                             </div>
-                            <DialogFooter>
+                            <DialogFooter className="flex-col sm:flex-row gap-2">
                               <Button 
                                 variant="outline" 
                                 onClick={resetForm}
+                                className="w-full sm:w-auto"
                               >
                                 Cancel
                               </Button>
                               <Button 
                                 onClick={handleUpdateUser}
                                 disabled={loading}
+                                className="w-full sm:w-auto"
                               >
                                 {loading ? (
                                   <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
@@ -534,9 +543,9 @@ const UserManagement: React.FC = () => {
               </Select>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={resetAssignShiftDialog}>Cancel</Button>
-            <Button onClick={handleAssignWorkShift} disabled={loading}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={resetAssignShiftDialog} className="w-full sm:w-auto">Cancel</Button>
+            <Button onClick={handleAssignWorkShift} disabled={loading} className="w-full sm:w-auto">
               {loading ? (
                 <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
               ) : (

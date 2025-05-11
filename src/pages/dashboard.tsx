@@ -69,9 +69,9 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="flex">
+      <div className="flex flex-col">
         {/* Main Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 p-3 sm:p-6 lg:p-8">
           <div className="mb-8">
             <h2 className="text-3xl font-bold tracking-tight">Employee Dashboard</h2>
             <p className="text-muted-foreground">
@@ -80,20 +80,22 @@ export default function Dashboard() {
           </div>
 
           <Tabs defaultValue="attendance" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="attendance">
-                <FaUserClock className="mr-2 h-4 w-4" />
-                Attendance
-              </TabsTrigger>
-              <TabsTrigger value="leave">
-                <FaCalendarAlt className="mr-2 h-4 w-4" />
-                Leave
-              </TabsTrigger>
-              <TabsTrigger value="profile">
-                <FaUserEdit className="mr-2 h-4 w-4" />
-                Profile
-              </TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto pb-2">
+              <TabsList className="inline-flex w-full">
+                <TabsTrigger value="attendance" className="flex-1 whitespace-nowrap">
+                  <FaUserClock className="mr-2 h-4 w-4" />
+                  <span className="sm:inline">Attendance</span>
+                </TabsTrigger>
+                <TabsTrigger value="leave" className="flex-1 whitespace-nowrap">
+                  <FaCalendarAlt className="mr-2 h-4 w-4" />
+                  <span className="sm:inline">Leave</span>
+                </TabsTrigger>
+                <TabsTrigger value="profile" className="flex-1 whitespace-nowrap">
+                  <FaUserEdit className="mr-2 h-4 w-4" />
+                  <span className="sm:inline">Profile</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
             
             <TabsContent value="attendance" className="space-y-4">
               <AttendanceCheckInOut />

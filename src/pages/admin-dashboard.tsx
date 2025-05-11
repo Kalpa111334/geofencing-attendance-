@@ -88,9 +88,9 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <div className="flex">
+      <div className="flex flex-col">
         {/* Main Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 p-3 sm:p-6 lg:p-8">
           <div className="mb-8">
             <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
             <p className="text-muted-foreground">
@@ -99,46 +99,46 @@ export default function AdminDashboard() {
           </div>
 
           <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList className="grid grid-cols-4 md:grid-cols-9 lg:w-auto">
-              <TabsTrigger value="overview">
-                <FaTachometerAlt className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Overview</span>
-              </TabsTrigger>
-              <TabsTrigger value="users">
-                <FaUsers className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Users</span>
-              </TabsTrigger>
-              <TabsTrigger value="locations">
-                <FaMapMarkerAlt className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Locations</span>
-              </TabsTrigger>
-              <TabsTrigger value="leave">
-                <FaCalendarAlt className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Leave</span>
-              </TabsTrigger>
-              <TabsTrigger value="reports">
-                <FaChartBar className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Reports</span>
-              </TabsTrigger>
-              <TabsTrigger value="attendance">
-                <FaUserClock className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">My Attendance</span>
-              </TabsTrigger>
-              <TabsTrigger value="work-shifts">
-                <FaClock className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Work Shifts</span>
-              </TabsTrigger>
-              
-              <TabsTrigger value="roster">
-                <FaCalendarWeek className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Roster</span>
-              </TabsTrigger>
-              
-              <TabsTrigger value="profile">
-                <FaUserEdit className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Profile</span>
-              </TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto pb-2">
+              <TabsList className="inline-flex min-w-full md:grid md:grid-cols-9 md:w-auto">
+                <TabsTrigger value="overview" className="whitespace-nowrap">
+                  <FaTachometerAlt className="mr-2 h-4 w-4" />
+                  <span className="sm:inline">Overview</span>
+                </TabsTrigger>
+                <TabsTrigger value="users" className="whitespace-nowrap">
+                  <FaUsers className="mr-2 h-4 w-4" />
+                  <span className="sm:inline">Users</span>
+                </TabsTrigger>
+                <TabsTrigger value="locations" className="whitespace-nowrap">
+                  <FaMapMarkerAlt className="mr-2 h-4 w-4" />
+                  <span className="sm:inline">Locations</span>
+                </TabsTrigger>
+                <TabsTrigger value="leave" className="whitespace-nowrap">
+                  <FaCalendarAlt className="mr-2 h-4 w-4" />
+                  <span className="sm:inline">Leave</span>
+                </TabsTrigger>
+                <TabsTrigger value="reports" className="whitespace-nowrap">
+                  <FaChartBar className="mr-2 h-4 w-4" />
+                  <span className="sm:inline">Reports</span>
+                </TabsTrigger>
+                <TabsTrigger value="attendance" className="whitespace-nowrap">
+                  <FaUserClock className="mr-2 h-4 w-4" />
+                  <span className="sm:inline">My Attendance</span>
+                </TabsTrigger>
+                <TabsTrigger value="work-shifts" className="whitespace-nowrap">
+                  <FaClock className="mr-2 h-4 w-4" />
+                  <span className="sm:inline">Work Shifts</span>
+                </TabsTrigger>
+                <TabsTrigger value="roster" className="whitespace-nowrap">
+                  <FaCalendarWeek className="mr-2 h-4 w-4" />
+                  <span className="sm:inline">Roster</span>
+                </TabsTrigger>
+                <TabsTrigger value="profile" className="whitespace-nowrap">
+                  <FaUserEdit className="mr-2 h-4 w-4" />
+                  <span className="sm:inline">Profile</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
             
             <TabsContent value="overview" className="space-y-4">
               <DashboardOverview />

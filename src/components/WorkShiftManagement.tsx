@@ -282,14 +282,14 @@ const WorkShiftManagement: React.FC = () => {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-2">
           <div>
             <CardTitle>Work Shift Management</CardTitle>
             <CardDescription>
               Create and manage employee work shifts
             </CardDescription>
           </div>
-          <Button onClick={() => setIsCreating(true)}>
+          <Button onClick={() => setIsCreating(true)} className="w-full sm:w-auto">
             <FaPlus className="mr-2 h-4 w-4" />
             New Work Shift
           </Button>
@@ -301,16 +301,17 @@ const WorkShiftManagement: React.FC = () => {
             </div>
           ) : workShifts.length > 0 ? (
             <div className="rounded-md border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Schedule</TableHead>
-                    <TableHead>Days</TableHead>
-                    <TableHead>Employees</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead className="hidden sm:table-cell">Schedule</TableHead>
+                      <TableHead className="hidden md:table-cell">Days</TableHead>
+                      <TableHead className="hidden md:table-cell">Employees</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
                 <TableBody>
                   {workShifts.map((workShift) => (
                     <TableRow key={workShift.id}>
@@ -322,15 +323,21 @@ const WorkShiftManagement: React.FC = () => {
                               {workShift.description}
                             </span>
                           )}
+                          <div className="sm:hidden text-xs text-muted-foreground mt-1">
+                            <div className="flex items-center">
+                              <FaClock className="mr-1 h-3 w-3" />
+                              {formatTime(workShift.startTime)} - {formatTime(workShift.endTime)}
+                            </div>
+                          </div>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <div className="flex items-center">
                           <FaClock className="mr-2 h-3 w-3 text-muted-foreground" />
                           {formatTime(workShift.startTime)} - {formatTime(workShift.endTime)}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <div className="flex items-center">
                           <FaCalendarDay className="mr-2 h-3 w-3 text-muted-foreground" />
                           <span className="text-sm">
@@ -342,7 +349,7 @@ const WorkShiftManagement: React.FC = () => {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <div className="flex items-center">
                           <FaUsers className="mr-2 h-3 w-3 text-muted-foreground" />
                           <span className="text-sm">
@@ -420,7 +427,7 @@ const WorkShiftManagement: React.FC = () => {
               />
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startTime">Start Time *</Label>
                 <Input 
@@ -444,7 +451,7 @@ const WorkShiftManagement: React.FC = () => {
             
             <div className="space-y-2">
               <Label>Working Days *</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
                 {daysOfWeek.map((day) => (
                   <div key={day} className="flex items-center space-x-2">
                     <Checkbox 
