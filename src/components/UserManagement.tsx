@@ -35,7 +35,8 @@ import {
   FaTrash, 
   FaSearch, 
   FaFilter, 
-  FaUserCog 
+  FaUserCog,
+  FaClock
 } from 'react-icons/fa';
 
 interface User {
@@ -49,8 +50,18 @@ interface User {
   createdAt: string;
 }
 
+interface WorkShift {
+  id: string;
+  name: string;
+  description: string | null;
+  startTime: string;
+  endTime: string;
+  days: string[];
+}
+
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [workShifts, setWorkShifts] = useState<WorkShift[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
@@ -62,11 +73,16 @@ const UserManagement: React.FC = () => {
     position: '',
     role: 'EMPLOYEE',
   });
+  const [showAssignShiftDialog, setShowAssignShiftDialog] = useState<boolean>(false);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedWorkShiftId, setSelectedWorkShiftId] = useState<string>('');
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
 
-  // Fetch users on component mount
+  // Fetch users and work shifts on component mount
   useEffect(() => {
     fetchUsers();
+    fetchWorkShifts();
   }, []);
 
   // Fetch users from API
@@ -114,6 +130,25 @@ const UserManagement: React.FC = () => {
     });
   };
 
+  // Fetch work shifts from API
+  const fetchWorkShifts = async () => {
+    try {
+      const response = await fetch('/api/work-shifts');
+      if (!response.ok) {
+        throw new Error('Failed to fetch work shifts');
+      }
+      const data = await response.json();
+      setWorkShifts(data);
+    } catch (error) {
+      console.error('Error fetching work shifts:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to fetch work shifts',
+      });
+    }
+  };
+
   // Reset form data
   const resetForm = () => {
     setEditingUser(null);
@@ -124,6 +159,14 @@ const UserManagement: React.FC = () => {
       position: '',
       role: 'EMPLOYEE',
     });
+  };
+
+  // Reset assign shift dialog
+  const resetAssignShiftDialog = () => {
+    setSelectedUserId('');
+    setSelectedWorkShiftId('');
+    setShowAssignShiftDialog(false);
+    setSelectedUser(null);
   };
 
   // Handle form submission for updating a user
@@ -166,6 +209,90 @@ const UserManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle assigning a work shift to a user
+  const handleAssignWorkShift = async () => {
+    if (!selectedUserId || !selectedWorkShiftId) {
+      toast({
+        variant: 'destructive',
+        title: 'Validation Error',
+        description: 'Please select a work shift',
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Get the current work shift to get its employees
+      const response = await fetch(`/api/work-shifts/${selectedWorkShiftId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch work shift details');
+      }
+      
+      const workShift = await response.json();
+      
+      // Check if the user is already assigned to this work shift
+      const isAlreadyAssigned = workShift.employees.some((emp: any) => emp.id === selectedUserId);
+      
+      // Prepare the employee IDs (existing + new one if not already assigned)
+      const employeeIds = isAlreadyAssigned 
+        ? workShift.employees.map((emp: any) => emp.id)
+        : [...workShift.employees.map((emp: any) => emp.id), selectedUserId];
+      
+      // Update the work shift with the new employee assignment
+      const updateResponse = await fetch(`/api/work-shifts/${selectedWorkShiftId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: workShift.name,
+          description: workShift.description,
+          startTime: workShift.startTime,
+          endTime: workShift.endTime,
+          days: workShift.days,
+          employeeIds: employeeIds,
+        }),
+      });
+      
+      if (!updateResponse.ok) {
+        const errorData = await updateResponse.json();
+        throw new Error(errorData.error || 'Failed to assign work shift');
+      }
+      
+      toast({
+        title: 'Success',
+        description: `Work shift assigned to ${selectedUser?.firstName || ''} ${selectedUser?.lastName || selectedUser?.email || ''}`,
+      });
+      
+      // Reset dialog and refresh data
+      resetAssignShiftDialog();
+      fetchWorkShifts();
+    } catch (error: any) {
+      console.error('Error assigning work shift:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to assign work shift',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format time for display
+  const formatTime = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hours, 10));
+    date.setMinutes(parseInt(minutes, 10));
+    return new Intl.DateTimeFormat('en-US', { 
+      hour: 'numeric', 
+      minute: 'numeric', 
+      hour12: true 
+    }).format(date);
   };
 
   // Filter users based on search term and role filter
@@ -256,16 +383,29 @@ const UserManagement: React.FC = () => {
                       <TableCell>{user.department || 'Not set'}</TableCell>
                       <TableCell>{user.position || 'Not set'}</TableCell>
                       <TableCell className="text-right">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleEditUser(user)}
-                            >
-                              <FaEdit className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
+                        <div className="flex justify-end space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedUserId(user.id);
+                              setSelectedUser(user);
+                              setShowAssignShiftDialog(true);
+                            }}
+                            title="Assign Work Shift"
+                          >
+                            <FaClock className="h-4 w-4" />
+                          </Button>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleEditUser(user)}
+                              >
+                                <FaEdit className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
                               <DialogTitle>Edit User</DialogTitle>
@@ -350,6 +490,7 @@ const UserManagement: React.FC = () => {
                             </DialogFooter>
                           </DialogContent>
                         </Dialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -363,6 +504,49 @@ const UserManagement: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Assign Work Shift Dialog */}
+      <Dialog open={showAssignShiftDialog} onOpenChange={setShowAssignShiftDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Work Shift</DialogTitle>
+            <DialogDescription>
+              Assign a work shift to {selectedUser?.firstName || ''} {selectedUser?.lastName || selectedUser?.email || ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="workShift">Select Work Shift</Label>
+              <Select 
+                value={selectedWorkShiftId} 
+                onValueChange={setSelectedWorkShiftId}
+              >
+                <SelectTrigger id="workShift">
+                  <SelectValue placeholder="Select a work shift" />
+                </SelectTrigger>
+                <SelectContent>
+                  {workShifts.map((shift) => (
+                    <SelectItem key={shift.id} value={shift.id}>
+                      {shift.name} ({formatTime(shift.startTime)} - {formatTime(shift.endTime)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={resetAssignShiftDialog}>Cancel</Button>
+            <Button onClick={handleAssignWorkShift} disabled={loading}>
+              {loading ? (
+                <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FaClock className="mr-2 h-4 w-4" />
+              )}
+              Assign Work Shift
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
