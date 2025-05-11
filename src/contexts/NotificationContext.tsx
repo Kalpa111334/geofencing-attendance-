@@ -139,7 +139,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ subscription: subscription.toJSON() }),
+        body: JSON.stringify({ 
+          subscription: {
+            endpoint: subscription.endpoint,
+            keys: {
+              p256dh: subscription.toJSON().keys.p256dh,
+              auth: subscription.toJSON().keys.auth
+            }
+          }
+        }),
       });
       
       if (!response.ok) {

@@ -55,6 +55,20 @@ export const sendNotificationToUser = async (
     const results = await Promise.allSettled(
       subscriptions.map(async (subscription) => {
         try {
+          // Validate subscription data
+          if (!subscription.endpoint || !subscription.p256dh || !subscription.auth) {
+            console.error(`Invalid subscription data: ${JSON.stringify(subscription)}`);
+            // Delete invalid subscription
+            await prisma.notificationSubscription.delete({
+              where: { id: subscription.id },
+            });
+            return { 
+              success: false, 
+              endpoint: subscription.endpoint || 'unknown', 
+              error: 'Invalid subscription data' 
+            };
+          }
+          
           // Create proper PushSubscription object format
           const pushSubscription = {
             endpoint: subscription.endpoint,
@@ -69,16 +83,20 @@ export const sendNotificationToUser = async (
           console.log(`Successfully sent notification to ${subscription.endpoint}`);
           return { success: true, endpoint: subscription.endpoint };
         } catch (error: any) {
-          console.error(`Error sending notification to ${subscription.endpoint}:`, error);
+          console.error(`Error sending notification to ${subscription.endpoint || 'unknown'}:`, error);
           
           // If subscription is expired or invalid, remove it
           if (error.statusCode === 404 || error.statusCode === 410) {
             await prisma.notificationSubscription.delete({
-              where: { endpoint: subscription.endpoint },
+              where: { id: subscription.id },
             });
-            console.log(`Deleted invalid subscription: ${subscription.endpoint}`);
+            console.log(`Deleted invalid subscription: ${subscription.endpoint || 'unknown'}`);
           }
-          return { success: false, endpoint: subscription.endpoint, error: error.message };
+          return { 
+            success: false, 
+            endpoint: subscription.endpoint || 'unknown', 
+            error: error.message || 'Unknown error' 
+          };
         }
       })
     );
