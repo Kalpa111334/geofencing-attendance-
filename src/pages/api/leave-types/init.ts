@@ -63,7 +63,7 @@ export default async function handler(
     // Combine both sets of IDs to get all leave types in use
     const leaveTypeIdsInRequests = leaveTypesInRequests.map(lt => lt.leaveTypeId);
     const leaveTypeIdsInBalances = leaveTypesInBalances.map(lt => lt.leaveTypeId);
-    const allLeaveTypeIdsInUse = [...new Set([...leaveTypeIdsInRequests, ...leaveTypeIdsInBalances])];
+    const allLeaveTypeIdsInUse = Array.from(new Set([...leaveTypeIdsInRequests, ...leaveTypeIdsInBalances]));
     
     // Get all leave types
     const allLeaveTypes = await prisma.leaveType.findMany();
