@@ -135,7 +135,7 @@ export default async function handler(
         
         // Determine if the user is late based on work shift or roster
         let isLate = false;
-        let workShiftStartTime = null;
+        let workShiftStartTime: string | null = null;
         
         if (userRoster) {
           // User has a roster assignment for today
