@@ -11,11 +11,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // Verify authentication
     const supabase = createClient({ req, res });
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
+    const { data, error } = await supabase.auth.getUser();
+    
+    if (error || !data.user) {
+      console.error('Authentication error:', error);
       return res.status(401).json({ error: 'Unauthorized' });
     }
+
+    const user = data.user;
 
     // Configure web-push
     webpush.setVapidDetails(

@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@/util/supabase/api';
 import { generateAndSendDailyAttendanceReport } from '@/util/notifications';
+import prisma from '@/lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -10,18 +11,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // Verify authentication and admin role
     const supabase = createClient({ req, res });
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
+    const { data, error } = await supabase.auth.getUser();
+    
+    if (error || !data.user) {
+      console.error('Authentication error:', error);
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Check if user is admin
-    const { data: userData } = await supabase
-      .from('User')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+    const user = data.user;
+
+    // Check if user is admin using Prisma instead of Supabase
+    const userData = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { role: true }
+    });
 
     if (!userData || userData.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Forbidden: Admin access required' });

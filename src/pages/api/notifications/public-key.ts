@@ -1,5 +1,4 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@/util/supabase/api';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -7,15 +6,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Verify authentication
-    const supabase = createClient({ req, res });
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    // Return the public VAPID key without requiring authentication
+    // This is safe as the public key is meant to be public
+    if (!process.env.VAPID_PUBLIC_KEY) {
+      throw new Error('VAPID_PUBLIC_KEY environment variable is not set');
     }
-
-    // Return the public VAPID key
+    
     return res.status(200).json({ 
       publicKey: process.env.VAPID_PUBLIC_KEY 
     });

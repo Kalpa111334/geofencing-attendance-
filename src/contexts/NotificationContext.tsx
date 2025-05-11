@@ -63,8 +63,18 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       }
       
       // Get public key from server
-      const response = await fetch('/api/notifications/public-key');
-      const { publicKey } = await response.json();
+      let publicKey;
+      try {
+        const response = await fetch('/api/notifications/public-key');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch public key: ${response.status} ${response.statusText}`);
+        }
+        const data = await response.json();
+        publicKey = data.publicKey;
+      } catch (error) {
+        console.error('Error fetching public key:', error);
+        throw new Error('Could not fetch public key from server');
+      }
       
       if (!publicKey) {
         throw new Error('Public key not available');
