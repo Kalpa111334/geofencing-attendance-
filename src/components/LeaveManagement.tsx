@@ -595,7 +595,7 @@ const LeaveManagement: React.FC = () => {
                 </div>
               </form>
             </CardContent>
-            <CardFooter className="flex justify-center">
+            <CardFooter className="flex flex-col items-center gap-3">
               <Button
                 onClick={handleSubmit}
                 disabled={isSubmitting || (selectedLeaveTypeId === 'custom' && !customLeaveType) || !startDate || !endDate || reason.length < 50}
@@ -612,6 +612,42 @@ const LeaveManagement: React.FC = () => {
                   'Submit Leave Request'
                 )}
               </Button>
+              
+              {/* Form completion status */}
+              {!isSubmitting && (
+                <div className="text-sm text-muted-foreground">
+                  {(selectedLeaveTypeId === 'custom' && !customLeaveType) && (
+                    <div className="flex items-center text-amber-600">
+                      <FaInfoCircle className="mr-1 h-3 w-3" />
+                      Please enter a leave type name
+                    </div>
+                  )}
+                  {!startDate && (
+                    <div className="flex items-center text-amber-600">
+                      <FaInfoCircle className="mr-1 h-3 w-3" />
+                      Please select a start date
+                    </div>
+                  )}
+                  {!endDate && startDate && (
+                    <div className="flex items-center text-amber-600">
+                      <FaInfoCircle className="mr-1 h-3 w-3" />
+                      Please select an end date
+                    </div>
+                  )}
+                  {reason.length < 50 && (
+                    <div className="flex items-center text-amber-600">
+                      <FaInfoCircle className="mr-1 h-3 w-3" />
+                      Reason must be at least 50 characters ({reason.length}/50)
+                    </div>
+                  )}
+                  {(!(selectedLeaveTypeId === 'custom' && !customLeaveType) && startDate && endDate && reason.length >= 50) && (
+                    <div className="flex items-center text-green-600">
+                      <FaCheck className="mr-1 h-3 w-3" />
+                      All required fields completed
+                    </div>
+                  )}
+                </div>
+              )}
             </CardFooter>
           </Card>
         </TabsContent>
