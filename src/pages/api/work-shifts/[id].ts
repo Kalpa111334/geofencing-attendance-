@@ -137,14 +137,7 @@ export default async function handler(
         });
       }
 
-      // Use raw SQL query to delete the relationships in the junction table
-      // This bypasses Prisma's ORM layer which is causing the issue
-      await prisma.$executeRawUnsafe(`
-        DELETE FROM "_EmployeeWorkShifts" 
-        WHERE "B" = '${id}'
-      `);
-
-      // Now that relationships are removed, delete the work shift
+      // Delete the work shift (employee relationships are handled separately)
       await prisma.workShift.delete({
         where: { id }
       });

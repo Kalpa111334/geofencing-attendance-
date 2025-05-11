@@ -209,12 +209,27 @@ const WorkShiftManagement: React.FC = () => {
     if (!selectedWorkShift) return;
     
     try {
-      const response = await fetch(`/api/work-shifts/${selectedWorkShift.id}`, {
+      // First, remove all employee relationships
+      const removeEmployeesResponse = await fetch('/api/work-shifts/remove-employees', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ workShiftId: selectedWorkShift.id }),
+      });
+
+      if (!removeEmployeesResponse.ok) {
+        const errorData = await removeEmployeesResponse.json();
+        throw new Error(errorData.error || 'Failed to remove employee relationships');
+      }
+
+      // Then delete the work shift
+      const deleteResponse = await fetch(`/api/work-shifts/${selectedWorkShift.id}`, {
         method: 'DELETE',
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!deleteResponse.ok) {
+        const errorData = await deleteResponse.json();
         throw new Error(errorData.error || 'Failed to delete work shift');
       }
 
