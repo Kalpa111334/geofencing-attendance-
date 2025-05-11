@@ -555,10 +555,12 @@ const AttendanceReports: React.FC = () => {
 ⌚ Average Work Hours: ${pdfData.summary.averageWorkHours} hours/day
 
 ${pdfData.attendances.length > 0 ? `
-📋 *RECENT ATTENDANCE*
+📋 *ATTENDANCE DETAILS*
 ${pdfData.attendances.slice(0, 3).map((att: any) => 
-  `${att.date}: ${att.status} (${att.checkIn} - ${att.checkOut})`
-).join('\n')}
+  `👤 ${att.employee || pdfData.employeeInfo.name} | 📍 ${att.location}
+  ⏰ Check In: ${att.checkIn} | ⏱️ Check Out: ${att.checkOut}
+  ⌛ Duration: ${att.duration} | ${att.status === 'PRESENT' ? '✅' : att.status === 'LATE' ? '⚠️' : '❌'} Status: ${att.status}`
+).join('\n\n')}
 ${pdfData.attendances.length > 3 ? `\n...and ${pdfData.attendances.length - 3} more records` : ''}` : ''}
 
 🕒 Generated: ${format(new Date(pdfData.generatedAt), 'MMM d, yyyy h:mm a')}
@@ -625,17 +627,7 @@ ${pdfData.attendances.length > 3 ? `\n...and ${pdfData.attendances.length - 3} m
                 View and analyze employee attendance records
               </CardDescription>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={exportToCSV}
-                disabled={filteredAttendances.length === 0}
-                className="flex-1 sm:flex-none"
-              >
-                <FaDownload className="mr-2 h-4 w-4" />
-                Export CSV
-              </Button>
+            <div>
               <Button 
                 variant="default" 
                 size="sm"
@@ -648,7 +640,7 @@ ${pdfData.attendances.length > 3 ? `\n...and ${pdfData.attendances.length - 3} m
                 ) : (
                   <FaFilePdf className="mr-2 h-4 w-4" />
                 )}
-                Generate PDF
+                Export PDF
               </Button>
             </div>
           </div>
@@ -893,29 +885,33 @@ ${pdfData.attendances.length > 3 ? `\n...and ${pdfData.attendances.length - 3} m
                 </div>
               </div>
               
-              {/* Attendance Details */}
+              {/* Attendance Details with the requested structure */}
               {pdfData.attendances.length > 0 && (
                 <div className="border rounded-md p-4 bg-muted/30">
                   <h4 className="font-medium text-sm uppercase text-primary mb-2">Attendance Details</h4>
                   <div className="text-xs text-muted-foreground mb-2">
-                    Showing first 5 of {pdfData.attendances.length} records
+                    Showing {Math.min(pdfData.attendances.length, 5)} of {pdfData.attendances.length} records
                   </div>
                   <div className="border rounded-md overflow-hidden">
                     <table className="w-full text-sm">
                       <thead className="bg-primary text-white">
                         <tr>
-                          <th className="p-2 text-left">Date</th>
+                          <th className="p-2 text-left">Employee</th>
+                          <th className="p-2 text-left">Location</th>
                           <th className="p-2 text-left">Check In</th>
                           <th className="p-2 text-left">Check Out</th>
+                          <th className="p-2 text-left">Duration</th>
                           <th className="p-2 text-left">Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {pdfData.attendances.slice(0, 5).map((att: any, index: number) => (
-                          <tr key={index} className="border-t">
-                            <td className="p-2">{att.date}</td>
+                          <tr key={index} className={index % 2 === 0 ? "border-t" : "border-t bg-muted/20"}>
+                            <td className="p-2">{att.employee || pdfData.employeeInfo.name}</td>
+                            <td className="p-2">{att.location}</td>
                             <td className="p-2">{att.checkIn}</td>
                             <td className="p-2">{att.checkOut}</td>
+                            <td className="p-2">{att.duration}</td>
                             <td className="p-2">
                               <span className={`px-2 py-1 rounded-full text-xs ${
                                 att.status === 'PRESENT' 
