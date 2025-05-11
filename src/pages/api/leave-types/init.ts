@@ -44,31 +44,61 @@ export default async function handler(
   }
 
   try {
-    // Delete all existing leave types that aren't associated with any leave requests
-    const leaveTypesInUse = await prisma.leaveRequest.findMany({
+    // Find leave types used in leave requests
+    const leaveTypesInRequests = await prisma.leaveRequest.findMany({
       select: {
         leaveTypeId: true
       },
       distinct: ['leaveTypeId']
     });
     
-    const leaveTypeIdsInUse = leaveTypesInUse.map(lt => lt.leaveTypeId);
-    
-    // Delete leave types not in use
-    const deletedTypes = await prisma.leaveType.deleteMany({
-      where: {
-        id: {
-          notIn: leaveTypeIdsInUse
-        }
-      }
+    // Find leave types used in leave balances
+    const leaveTypesInBalances = await prisma.leaveBalance.findMany({
+      select: {
+        leaveTypeId: true
+      },
+      distinct: ['leaveTypeId']
     });
     
-    // Fetch the remaining leave types (those in use)
+    // Combine both sets of IDs to get all leave types in use
+    const leaveTypeIdsInRequests = leaveTypesInRequests.map(lt => lt.leaveTypeId);
+    const leaveTypeIdsInBalances = leaveTypesInBalances.map(lt => lt.leaveTypeId);
+    const allLeaveTypeIdsInUse = [...new Set([...leaveTypeIdsInRequests, ...leaveTypeIdsInBalances])];
+    
+    // Get all leave types
+    const allLeaveTypes = await prisma.leaveType.findMany();
+    const unusedLeaveTypeIds = allLeaveTypes
+      .filter(lt => !allLeaveTypeIdsInUse.includes(lt.id))
+      .map(lt => lt.id);
+    
+    let deletedCount = 0;
+    
+    // Delete unused leave types one by one to handle any unexpected constraints
+    for (const leaveTypeId of unusedLeaveTypeIds) {
+      try {
+        // First delete any associated leave balances (should be none, but just in case)
+        await prisma.leaveBalance.deleteMany({
+          where: { leaveTypeId }
+        });
+        
+        // Then delete the leave type
+        await prisma.leaveType.delete({
+          where: { id: leaveTypeId }
+        });
+        
+        deletedCount++;
+      } catch (err) {
+        console.warn(`Could not delete leave type ${leaveTypeId}:`, err);
+        // Continue with other leave types even if one fails
+      }
+    }
+    
+    // Fetch the remaining leave types
     const remainingLeaveTypes = await prisma.leaveType.findMany();
     
     return res.status(201).json({
       message: 'Leave types reset successfully',
-      deleted: deletedTypes.count,
+      deleted: deletedCount,
       remaining: remainingLeaveTypes.length,
       leaveTypes: remainingLeaveTypes
     });

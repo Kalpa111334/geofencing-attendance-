@@ -102,6 +102,38 @@ const AdminLeaveManagement: React.FC = () => {
   const [reportLeaveType, setReportLeaveType] = useState<string>('');
   const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false);
   
+  // Initialize leave types
+  const handleInitializeLeaveTypes = async () => {
+    try {
+      const response = await fetch('/api/leave-types/init', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to initialize leave types');
+      }
+      
+      const data = await response.json();
+      setLeaveTypes(data.leaveTypes);
+      
+      toast({
+        title: 'Success',
+        description: `Leave types reset successfully. Deleted ${data.deleted} unused types.`,
+      });
+    } catch (error: any) {
+      console.error('Error initializing leave types:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to initialize leave types',
+      });
+    }
+  };
+
   // Fetch leave requests, types, and departments on component mount
   useEffect(() => {
     const fetchLeaveData = async () => {
@@ -570,10 +602,23 @@ const AdminLeaveManagement: React.FC = () => {
         <TabsContent value="requests">
           <Card>
             <CardHeader>
-              <CardTitle>Leave Requests</CardTitle>
-              <CardDescription>
-                Manage employee leave requests
-              </CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Leave Requests</CardTitle>
+                  <CardDescription>
+                    Manage employee leave requests
+                  </CardDescription>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleInitializeLeaveTypes}
+                  className="flex items-center gap-2"
+                >
+                  <FaCalendarAlt className="h-4 w-4" />
+                  Clean Up Leave Types
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {/* Filters */}
