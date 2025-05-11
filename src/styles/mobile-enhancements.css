@@ -1,0 +1,188 @@
+/* Mobile enhancements */
+
+/* Improve touch targets */
+@media (max-width: 640px) {
+  button, 
+  a,
+  .clickable,
+  [role="button"],
+  input[type="checkbox"],
+  input[type="radio"],
+  select,
+  .select-trigger {
+    min-height: 44px;
+  }
+  
+  /* Increase spacing between interactive elements */
+  .mobile-touch-friendly > * + * {
+    margin-top: 16px;
+  }
+  
+  /* Improve form inputs on mobile */
+  input, 
+  textarea, 
+  select,
+  .select-trigger {
+    font-size: 16px !important; /* Prevent iOS zoom on focus */
+  }
+  
+  /* Add pull-to-refresh indicator space */
+  .mobile-safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  
+  /* Add bottom safe area for notched devices */
+  .mobile-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  
+  /* Improve scrolling experience */
+  .mobile-momentum-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Prevent text selection on interactive elements */
+  .mobile-no-select {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  /* Enhance active states for better touch feedback */
+  .mobile-touch-feedback:active {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
+  
+  /* Improve table display on mobile */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  
+  /* Improve modal positioning on mobile */
+  .mobile-modal-adjust {
+    align-items: flex-end;
+    padding-bottom: 0;
+  }
+  
+  .mobile-modal-adjust > div {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    max-height: 90vh;
+  }
+}
+
+/* Enhance bottom navigation */
+.mobile-bottom-nav {
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mobile-bottom-nav button {
+  transition: all 0.2s ease;
+}
+
+.mobile-bottom-nav button:active {
+  transform: translateY(-2px);
+}
+
+/* Enhance cards on mobile */
+@media (max-width: 640px) {
+  .card-hover-effect {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .card-hover-effect:active {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Improve form layout on mobile */
+@media (max-width: 640px) {
+  .mobile-stack > * {
+    width: 100%;
+    margin-bottom: 12px;
+  }
+  
+  .mobile-compact-form .form-item {
+    margin-bottom: 12px;
+  }
+  
+  .mobile-compact-form label {
+    margin-bottom: 4px;
+    display: block;
+  }
+}
+
+/* Enhance buttons on mobile */
+@media (max-width: 640px) {
+  .mobile-full-width-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 16px;
+  }
+  
+  .mobile-action-btn {
+    position: sticky;
+    bottom: 16px;
+    margin-top: 24px;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* Improve tab navigation on mobile */
+@media (max-width: 640px) {
+  .mobile-tabs-improved [role="tab"] {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .mobile-tabs-improved [role="tablist"] {
+    width: 100%;
+  }
+}
+
+/* Add pull-to-refresh visual indicator */
+.pull-indicator {
+  height: 0;
+  overflow: hidden;
+  text-align: center;
+  transition: height 0.3s ease;
+}
+
+.pull-active .pull-indicator {
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Enhance scrollable areas */
+.mobile-scrollable {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+}
+
+.mobile-scrollable::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
+
+/* Add haptic feedback classes */
+.haptic-feedback {
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .haptic-feedback:hover {
+    opacity: 0.9;
+  }
+}
+
+.haptic-feedback:active {
+  transform: scale(0.98);
+}

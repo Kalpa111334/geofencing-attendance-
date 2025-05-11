@@ -371,14 +371,14 @@ const AttendanceCheckInOut: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Attendance Check-In/Out</CardTitle>
+      <Card className="shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-xl">Attendance Check-In/Out</CardTitle>
           <CardDescription>
-            Record your attendance by checking in and out at your workplace
+            Record your attendance by checking in and out
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {/* Location Error Alert */}
           {locationError && (
             <Alert variant="destructive" className="mb-4">
@@ -407,20 +407,23 @@ const AttendanceCheckInOut: React.FC = () => {
           )}
 
           {currentAttendance ? (
-            <div className="space-y-4">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
               <div className="flex items-center gap-2 text-green-600 font-medium">
-                <FaSignInAlt />
-                <span>Currently checked in at {currentAttendance.location.name}</span>
+                <FaSignInAlt className="h-5 w-5" />
+                <span>Currently checked in</span>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Checked in at {formatDate(currentAttendance.checkInTime)}
-              </p>
+              <div className="mt-2 text-sm">
+                <div className="font-medium">{currentAttendance.location.name}</div>
+                <p className="text-muted-foreground mt-1">
+                  Since {formatDate(currentAttendance.checkInTime)}
+                </p>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <FaMapMarkerAlt className="text-muted-foreground" />
-                <span>Select location to check in:</span>
+              <div className="flex items-center gap-2 mb-2">
+                <FaMapMarkerAlt className="text-primary h-5 w-5" />
+                <span className="font-medium">Select location to check in:</span>
               </div>
               
               {locationLoading ? (
@@ -457,6 +460,7 @@ const AttendanceCheckInOut: React.FC = () => {
                           variant="outline" 
                           size="sm" 
                           onClick={() => setShowPermissionDialog(true)}
+                          className="mt-2"
                         >
                           <FaLocationArrow className="mr-2 h-4 w-4" />
                           Show Instructions
@@ -466,24 +470,20 @@ const AttendanceCheckInOut: React.FC = () => {
                   )}
                   
                   {locationPermission !== 'denied' && (
-                    <div className="mt-2 p-3 bg-blue-50 text-blue-800 rounded-md text-sm">
+                    <div className="mt-3 p-3 bg-blue-50 text-blue-800 rounded-md text-sm">
                       <p className="font-medium mb-1">Location Access Required</p>
-                      <p>This app needs your location to verify you're within the workplace area. Please ensure:</p>
-                      <ul className="list-disc pl-5 mt-1 space-y-1">
+                      <p>This app needs your location to verify you're within the workplace area.</p>
+                      <ul className="list-disc pl-5 mt-2 space-y-1">
                         <li>Location services are enabled on your device</li>
                         <li>You've granted location permission to this website</li>
-                        <li>You're using a secure (HTTPS) connection</li>
                       </ul>
-                      <div className="mt-2 pt-2 border-t border-blue-200">
-                        <p className="font-medium">Having trouble?</p>
-                        <Button 
-                          variant="link" 
-                          className="p-0 h-auto text-blue-800 underline" 
-                          onClick={() => setShowPermissionDialog(true)}
-                        >
-                          View browser-specific instructions
-                        </Button>
-                      </div>
+                      <Button 
+                        variant="link" 
+                        className="p-0 h-auto text-blue-800 underline mt-2" 
+                        onClick={() => setShowPermissionDialog(true)}
+                      >
+                        View browser-specific instructions
+                      </Button>
                     </div>
                   )}
                 </>
@@ -495,18 +495,19 @@ const AttendanceCheckInOut: React.FC = () => {
             </div>
           )}
         </CardContent>
-        <CardFooter>
+        <CardFooter className="pt-0">
           {currentAttendance ? (
             <Button
               onClick={handleCheckOut}
               disabled={loading}
-              className="w-full"
+              className="w-full py-6 text-lg"
               variant="destructive"
+              size="lg"
             >
               {loading ? (
-                <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
+                <FaSpinner className="mr-2 h-5 w-5 animate-spin" />
               ) : (
-                <FaSignOutAlt className="mr-2 h-4 w-4" />
+                <FaSignOutAlt className="mr-2 h-5 w-5" />
               )}
               Check Out
             </Button>
@@ -514,12 +515,13 @@ const AttendanceCheckInOut: React.FC = () => {
             <Button
               onClick={handleCheckIn}
               disabled={loading || locations.length === 0 || locationPermission === 'denied'}
-              className="w-full"
+              className="w-full py-6 text-lg"
+              size="lg"
             >
               {loading ? (
-                <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
+                <FaSpinner className="mr-2 h-5 w-5 animate-spin" />
               ) : (
-                <FaSignInAlt className="mr-2 h-4 w-4" />
+                <FaSignInAlt className="mr-2 h-5 w-5" />
               )}
               Check In
             </Button>
@@ -527,9 +529,9 @@ const AttendanceCheckInOut: React.FC = () => {
         </CardFooter>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Attendance</CardTitle>
+      <Card className="shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-xl">Recent Attendance</CardTitle>
           <CardDescription>
             Your recent attendance records
           </CardDescription>
@@ -540,13 +542,13 @@ const AttendanceCheckInOut: React.FC = () => {
               <FaSpinner className="animate-spin h-5 w-5 text-primary" />
             </div>
           ) : attendanceHistory.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {attendanceHistory.slice(0, 5).map((attendance) => (
-                <div key={attendance.id} className="border rounded-lg p-4">
+                <div key={attendance.id} className="border rounded-lg p-3 sm:p-4 hover:bg-muted/30 transition-colors">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <h4 className="font-medium">{attendance.location.name}</h4>
-                      <p className="text-sm text-muted-foreground">
+                      <h4 className="font-medium truncate max-w-[180px] sm:max-w-none">{attendance.location.name}</h4>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
                         {formatDate(attendance.checkInTime)}
                       </p>
                     </div>
@@ -561,18 +563,18 @@ const AttendanceCheckInOut: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                  <div className="text-sm grid grid-cols-2 gap-2">
-                    <div>
-                      <span className="text-muted-foreground">Check-in:</span>{' '}
-                      {formatDate(attendance.checkInTime)}
+                  <div className="text-xs sm:text-sm mt-2 space-y-1 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-2">
+                    <div className="flex justify-between sm:block">
+                      <span className="text-muted-foreground">Check-in:</span>
+                      <span className="font-medium sm:font-normal">{formatDate(attendance.checkInTime)}</span>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Check-out:</span>{' '}
-                      {attendance.checkOutTime ? formatDate(attendance.checkOutTime) : 'In progress'}
+                    <div className="flex justify-between sm:block">
+                      <span className="text-muted-foreground">Check-out:</span>
+                      <span className="font-medium sm:font-normal">{attendance.checkOutTime ? formatDate(attendance.checkOutTime) : 'In progress'}</span>
                     </div>
-                    <div className="col-span-2">
-                      <span className="text-muted-foreground">Duration:</span>{' '}
-                      {calculateDuration(attendance.checkInTime, attendance.checkOutTime)}
+                    <div className="flex justify-between sm:block sm:col-span-2 pt-1 sm:pt-0 border-t sm:border-t-0 mt-1 sm:mt-0">
+                      <span className="text-muted-foreground">Duration:</span>
+                      <span className="font-medium sm:font-normal">{calculateDuration(attendance.checkInTime, attendance.checkOutTime)}</span>
                     </div>
                   </div>
                 </div>

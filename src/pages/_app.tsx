@@ -3,8 +3,8 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import '../styles/globals.css';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Toaster } from "@/components/ui/toaster"
-import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import Head from 'next/head';
 
 export default function App({ Component, pageProps }: AppProps) {
   const [mounted, setMounted] = useState(false);
@@ -27,13 +27,22 @@ export default function App({ Component, pageProps }: AppProps) {
   }
 
   return (
-    <div className="min-h-screen">
-      <AuthProvider>
-        <ProtectedRoute>
-          <Component {...pageProps} />
-        </ProtectedRoute>
-        <Toaster />
-      </AuthProvider>
-    </div>
+    <>
+      <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
+        <meta name="theme-color" content="#ffffff" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="format-detection" content="telephone=no" />
+      </Head>
+      <div className="min-h-screen mobile-safe-top mobile-safe-bottom">
+        <AuthProvider>
+          <ProtectedRoute>
+            <Component {...pageProps} />
+          </ProtectedRoute>
+          <Toaster />
+        </AuthProvider>
+      </div>
+    </>
   )
 }

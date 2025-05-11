@@ -46,14 +46,14 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b">
+      <header className="border-b sticky top-0 z-10 bg-background">
         <div className="flex h-16 items-center px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
             <FaUserClock className="h-6 w-6 text-primary" />
             <h1 className="text-xl font-bold">TimeTrack</h1>
           </div>
-          <div className="ml-auto flex items-center gap-4">
-            <div className="flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2 sm:gap-4">
+            <div className="hidden sm:flex items-center gap-2">
               <FaUser className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">{userName}</span>
             </div>
@@ -61,20 +61,21 @@ export default function Dashboard() {
               onClick={() => signOut()}
               variant="outline"
               size="sm"
+              className="px-2 sm:px-3"
             >
-              <FaSignOutAlt className="mr-2 h-4 w-4" />
-              Log Out
+              <FaSignOutAlt className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Log Out</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="flex flex-col">
+      <div className="flex flex-col pb-16 sm:pb-0">
         {/* Main Content */}
         <main className="flex-1 p-3 sm:p-6 lg:p-8">
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold tracking-tight">Employee Dashboard</h2>
-            <p className="text-muted-foreground">
+          <div className="mb-6">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Employee Dashboard</h2>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Manage your attendance and view your records
             </p>
           </div>
@@ -84,15 +85,15 @@ export default function Dashboard() {
               <TabsList className="inline-flex w-full">
                 <TabsTrigger value="attendance" className="flex-1 whitespace-nowrap">
                   <FaUserClock className="mr-2 h-4 w-4" />
-                  <span className="sm:inline">Attendance</span>
+                  <span>Attendance</span>
                 </TabsTrigger>
                 <TabsTrigger value="leave" className="flex-1 whitespace-nowrap">
                   <FaCalendarAlt className="mr-2 h-4 w-4" />
-                  <span className="sm:inline">Leave</span>
+                  <span>Leave</span>
                 </TabsTrigger>
                 <TabsTrigger value="profile" className="flex-1 whitespace-nowrap">
                   <FaUserEdit className="mr-2 h-4 w-4" />
-                  <span className="sm:inline">Profile</span>
+                  <span>Profile</span>
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -110,6 +111,36 @@ export default function Dashboard() {
             </TabsContent>
           </Tabs>
         </main>
+        
+        {/* Mobile Bottom Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t sm:hidden z-10 mobile-bottom-nav">
+          <div className="flex justify-around items-center h-16 mobile-no-select">
+            <Button 
+              variant="ghost" 
+              className="flex flex-col items-center justify-center h-full w-full rounded-none mobile-touch-feedback haptic-feedback"
+              onClick={() => document.querySelector('[data-value="attendance"]')?.click()}
+            >
+              <FaUserClock className="h-5 w-5" />
+              <span className="text-xs mt-1">Attendance</span>
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="flex flex-col items-center justify-center h-full w-full rounded-none mobile-touch-feedback haptic-feedback"
+              onClick={() => document.querySelector('[data-value="leave"]')?.click()}
+            >
+              <FaCalendarAlt className="h-5 w-5" />
+              <span className="text-xs mt-1">Leave</span>
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="flex flex-col items-center justify-center h-full w-full rounded-none mobile-touch-feedback haptic-feedback"
+              onClick={() => document.querySelector('[data-value="profile"]')?.click()}
+            >
+              <FaUserEdit className="h-5 w-5" />
+              <span className="text-xs mt-1">Profile</span>
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

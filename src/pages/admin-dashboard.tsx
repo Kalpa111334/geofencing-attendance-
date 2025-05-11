@@ -14,7 +14,8 @@ import {
   FaTachometerAlt,
   FaCalendarAlt,
   FaClock,
-  FaCalendarWeek
+  FaCalendarWeek,
+  FaEllipsisH
 } from "react-icons/fa";
 import AttendanceCheckInOut from "@/components/AttendanceCheckInOut";
 import LocationManagement from "@/components/LocationManagement";
@@ -70,8 +71,8 @@ export default function AdminDashboard() {
             <FaUserClock className="h-6 w-6 text-primary" />
             <h1 className="text-xl font-bold">TimeTrack Admin</h1>
           </div>
-          <div className="ml-auto flex items-center gap-4">
-            <div className="flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2 sm:gap-4">
+            <div className="hidden sm:flex items-center gap-2">
               <FaUser className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">{userName}</span>
               <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">Admin</span>
@@ -80,20 +81,21 @@ export default function AdminDashboard() {
               onClick={() => signOut()}
               variant="outline"
               size="sm"
+              className="px-2 sm:px-3"
             >
-              <FaSignOutAlt className="mr-2 h-4 w-4" />
-              Log Out
+              <FaSignOutAlt className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Log Out</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="flex flex-col">
+      <div className="flex flex-col pb-16 sm:pb-0">
         {/* Main Content */}
         <main className="flex-1 p-3 sm:p-6 lg:p-8">
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
-            <p className="text-muted-foreground">
+          <div className="mb-6">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Admin Dashboard</h2>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Manage locations, employees, and system settings
             </p>
           </div>
@@ -177,6 +179,103 @@ export default function AdminDashboard() {
             </TabsContent>
           </Tabs>
         </main>
+        
+        {/* Mobile Bottom Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t sm:hidden z-10 mobile-bottom-nav">
+          <div className="grid grid-cols-5 h-16 mobile-no-select">
+            <Button 
+              variant="ghost" 
+              className="flex flex-col items-center justify-center h-full w-full rounded-none mobile-touch-feedback haptic-feedback"
+              onClick={() => document.querySelector('[data-value="overview"]')?.click()}
+            >
+              <FaTachometerAlt className="h-4 w-4" />
+              <span className="text-xs mt-1">Overview</span>
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="flex flex-col items-center justify-center h-full w-full rounded-none mobile-touch-feedback haptic-feedback"
+              onClick={() => document.querySelector('[data-value="users"]')?.click()}
+            >
+              <FaUsers className="h-4 w-4" />
+              <span className="text-xs mt-1">Users</span>
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="flex flex-col items-center justify-center h-full w-full rounded-none mobile-touch-feedback haptic-feedback"
+              onClick={() => document.querySelector('[data-value="leave"]')?.click()}
+            >
+              <FaCalendarAlt className="h-4 w-4" />
+              <span className="text-xs mt-1">Leave</span>
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="flex flex-col items-center justify-center h-full w-full rounded-none mobile-touch-feedback haptic-feedback"
+              onClick={() => document.querySelector('[data-value="reports"]')?.click()}
+            >
+              <FaChartBar className="h-4 w-4" />
+              <span className="text-xs mt-1">Reports</span>
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="flex flex-col items-center justify-center h-full w-full rounded-none mobile-touch-feedback haptic-feedback"
+              onClick={() => {
+                const moreMenu = document.getElementById('more-menu');
+                if (moreMenu) {
+                  moreMenu.classList.toggle('hidden');
+                }
+              }}
+            >
+              <FaEllipsisH className="h-4 w-4" />
+              <span className="text-xs mt-1">More</span>
+            </Button>
+          </div>
+          
+          {/* More Menu */}
+          <div id="more-menu" className="hidden absolute bottom-16 left-0 right-0 bg-background border-t shadow-lg">
+            <div className="grid grid-cols-4 gap-1 p-2">
+              <Button 
+                variant="ghost" 
+                className="flex flex-col items-center justify-center p-2 h-20 mobile-touch-feedback haptic-feedback"
+                onClick={() => document.querySelector('[data-value="locations"]')?.click()}
+              >
+                <FaMapMarkerAlt className="h-5 w-5" />
+                <span className="text-xs mt-1">Locations</span>
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="flex flex-col items-center justify-center p-2 h-20 mobile-touch-feedback haptic-feedback"
+                onClick={() => document.querySelector('[data-value="attendance"]')?.click()}
+              >
+                <FaUserClock className="h-5 w-5" />
+                <span className="text-xs mt-1">Attendance</span>
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="flex flex-col items-center justify-center p-2 h-20 mobile-touch-feedback haptic-feedback"
+                onClick={() => document.querySelector('[data-value="work-shifts"]')?.click()}
+              >
+                <FaClock className="h-5 w-5" />
+                <span className="text-xs mt-1">Shifts</span>
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="flex flex-col items-center justify-center p-2 h-20 mobile-touch-feedback haptic-feedback"
+                onClick={() => document.querySelector('[data-value="roster"]')?.click()}
+              >
+                <FaCalendarWeek className="h-5 w-5" />
+                <span className="text-xs mt-1">Roster</span>
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="flex flex-col items-center justify-center p-2 h-20 mobile-touch-feedback haptic-feedback"
+                onClick={() => document.querySelector('[data-value="profile"]')?.click()}
+              >
+                <FaUserEdit className="h-5 w-5" />
+                <span className="text-xs mt-1">Profile</span>
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

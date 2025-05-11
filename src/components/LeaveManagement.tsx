@@ -375,29 +375,29 @@ const LeaveManagement: React.FC = () => {
     <div className="space-y-6">
       <Tabs defaultValue="request" className="space-y-4">
         <div className="overflow-x-auto pb-2">
-          <TabsList className="w-full sm:w-auto">
-            <TabsTrigger value="request" className="flex-1 sm:flex-none">
+          <TabsList className="w-full">
+            <TabsTrigger value="request" className="flex-1">
               <FaCalendarAlt className="mr-2 h-4 w-4" />
-              Request Leave
+              <span className="text-sm sm:text-base">Request</span>
             </TabsTrigger>
-            <TabsTrigger value="balance" className="flex-1 sm:flex-none">
+            <TabsTrigger value="balance" className="flex-1">
               <FaInfoCircle className="mr-2 h-4 w-4" />
-              Leave Balance
+              <span className="text-sm sm:text-base">Balance</span>
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex-1 sm:flex-none">
+            <TabsTrigger value="history" className="flex-1">
               <FaCheck className="mr-2 h-4 w-4" />
-              Leave History
+              <span className="text-sm sm:text-base">History</span>
             </TabsTrigger>
           </TabsList>
         </div>
         
         {/* Leave Request Form */}
         <TabsContent value="request">
-          <Card>
-            <CardHeader>
-              <CardTitle>Request Leave</CardTitle>
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xl">Request Leave</CardTitle>
               <CardDescription>
-                Submit a new leave request. All fields marked with * are required.
+                Submit a new leave request. Fields with * are required.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -491,7 +491,7 @@ const LeaveManagement: React.FC = () => {
                             onSelect={setStartDate}
                             disabled={isSubmitting}
                             initialFocus
-                            className="mx-auto"
+                            className="mx-auto scale-90 sm:scale-100 origin-top"
                           />
                         </div>
                       </div>
@@ -504,7 +504,7 @@ const LeaveManagement: React.FC = () => {
                             onSelect={setEndDate}
                             disabled={isSubmitting || !startDate}
                             initialFocus
-                            className="mx-auto"
+                            className="mx-auto scale-90 sm:scale-100 origin-top"
                           />
                         </div>
                       </div>
@@ -587,11 +587,11 @@ const LeaveManagement: React.FC = () => {
                 </div>
               </form>
             </CardContent>
-            <CardFooter className="flex flex-col items-center gap-3">
+            <CardFooter className="flex flex-col items-center gap-3 pt-2">
               <Button
                 onClick={handleSubmit}
                 disabled={isSubmitting || (selectedLeaveTypeId === 'custom' && !customLeaveType) || !startDate || !endDate || !reason}
-                className="w-full md:w-2/3 lg:w-1/2 py-6 text-lg"
+                className="w-full py-6 text-lg"
                 size="lg"
                 type="button"
               >
@@ -698,14 +698,14 @@ const LeaveManagement: React.FC = () => {
                   {/* Summary Chart */}
                   <div className="mt-8 pt-6 border-t">
                     <h3 className="font-medium mb-4">Leave Summary</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                       {leaveBalances.map((balance) => {
                         const available = getAvailableDays(balance);
                         const percentUsed = Math.round((balance.usedDays / balance.totalDays) * 100);
                         
                         return (
-                          <div key={balance.id} className="text-center">
-                            <div className="relative inline-block w-20 h-20">
+                          <div key={balance.id} className="text-center bg-muted/30 p-3 rounded-lg">
+                            <div className="relative inline-block w-16 sm:w-20 h-16 sm:h-20">
                               <svg className="w-full h-full" viewBox="0 0 36 36">
                                 <path
                                   className="stroke-current text-gray-200"
@@ -730,7 +730,8 @@ const LeaveManagement: React.FC = () => {
                                 </text>
                               </svg>
                             </div>
-                            <div className="mt-2 text-sm font-medium">{balance.leaveType.name}</div>
+                            <div className="mt-2 text-xs sm:text-sm font-medium truncate">{balance.leaveType.name}</div>
+                            <div className="text-xs text-muted-foreground mt-1">{available}/{balance.totalDays} days</div>
                           </div>
                         );
                       })}
@@ -761,46 +762,84 @@ const LeaveManagement: React.FC = () => {
                   <FaSpinner className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : leaveHistory.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Leave Type</TableHead>
-                        <TableHead className="hidden sm:table-cell">Dates</TableHead>
-                        <TableHead className="hidden md:table-cell">Days</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {leaveHistory.map((leave) => (
-                        <TableRow key={leave.id}>
-                          <TableCell>{leave.leaveType.name}</TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                            {formatDateDisplay(leave.startDate)} - {formatDateDisplay(leave.endDate)}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">{leave.totalDays}</TableCell>
-                          <TableCell>{getStatusBadge(leave.status)}</TableCell>
-                          <TableCell>
-                            {leave.status === 'PENDING' && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleCancelRequest(leave.id)}
-                              >
-                                Cancel
-                              </Button>
-                            )}
-                            {leave.status === 'REJECTED' && leave.rejectionReason && (
-                              <div className="text-xs text-red-500 hidden sm:block">
-                                Reason: {leave.rejectionReason}
-                              </div>
-                            )}
-                          </TableCell>
+                <div className="space-y-4">
+                  {/* Mobile view - card layout */}
+                  <div className="sm:hidden space-y-3">
+                    {leaveHistory.map((leave) => (
+                      <div key={leave.id} className="border rounded-lg p-3 hover:bg-muted/30 transition-colors">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h4 className="font-medium truncate max-w-[180px]">{leave.leaveType.name}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {formatDateDisplay(leave.startDate)} - {formatDateDisplay(leave.endDate)}
+                            </p>
+                          </div>
+                          <div>{getStatusBadge(leave.status)}</div>
+                        </div>
+                        <div className="flex justify-between text-xs mt-2">
+                          <span className="text-muted-foreground">Days: {leave.totalDays}</span>
+                          {leave.status === 'PENDING' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCancelRequest(leave.id)}
+                              className="h-7 text-xs"
+                            >
+                              Cancel
+                            </Button>
+                          )}
+                        </div>
+                        {leave.status === 'REJECTED' && leave.rejectionReason && (
+                          <div className="text-xs text-red-500 mt-2 pt-2 border-t">
+                            Reason: {leave.rejectionReason}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Desktop view - table layout */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Leave Type</TableHead>
+                          <TableHead>Dates</TableHead>
+                          <TableHead className="hidden md:table-cell">Days</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {leaveHistory.map((leave) => (
+                          <TableRow key={leave.id}>
+                            <TableCell>{leave.leaveType.name}</TableCell>
+                            <TableCell>
+                              {formatDateDisplay(leave.startDate)} - {formatDateDisplay(leave.endDate)}
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">{leave.totalDays}</TableCell>
+                            <TableCell>{getStatusBadge(leave.status)}</TableCell>
+                            <TableCell>
+                              {leave.status === 'PENDING' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleCancelRequest(leave.id)}
+                                >
+                                  Cancel
+                                </Button>
+                              )}
+                              {leave.status === 'REJECTED' && leave.rejectionReason && (
+                                <div className="text-xs text-red-500">
+                                  Reason: {leave.rejectionReason}
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
