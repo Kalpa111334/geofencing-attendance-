@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import prisma from '@/lib/prisma';
 import { createClient } from '@/util/supabase/api';
+import { sendNotificationToRole, sendNotificationToUser } from '@/util/notifications';
 
 // Helper function to calculate business days between two dates
 function calculateBusinessDays(startDate: Date, endDate: Date): number {
@@ -301,10 +302,48 @@ export default async function handler(
           }
         },
         include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            }
+          },
           leaveType: true,
           documents: true
         }
       });
+      
+      // Get user name for notification
+      const userName = `${leaveRequest.user.firstName || ''} ${leaveRequest.user.lastName || ''}`.trim() || leaveRequest.user.email;
+      
+      // Format dates for notification
+      const startDateFormatted = parsedStartDate.toLocaleDateString();
+      const endDateFormatted = parsedEndDate.toLocaleDateString();
+      
+      // Send notification to admins
+      await sendNotificationToRole(
+        'ADMIN',
+        `New Leave Request: ${userName}`,
+        `${userName} has requested ${totalDays} days of ${leaveRequest.leaveType.name} from ${startDateFormatted} to ${endDateFormatted}.`,
+        {
+          url: '/admin-dashboard?tab=leave',
+          tag: 'leave-request',
+          requireInteraction: true,
+        }
+      );
+      
+      // Send confirmation notification to the employee
+      await sendNotificationToUser(
+        userId,
+        'Leave Request Submitted',
+        `Your request for ${totalDays} days of ${leaveRequest.leaveType.name} from ${startDateFormatted} to ${endDateFormatted} has been submitted and is pending approval.`,
+        {
+          url: '/dashboard?tab=leave',
+          tag: 'leave-request-confirmation',
+        }
+      );
       
       return res.status(201).json(leaveRequest);
     } catch (error) {
@@ -412,6 +451,7 @@ export default async function handler(
         include: {
           user: {
             select: {
+              id: true,
               firstName: true,
               lastName: true,
               email: true
@@ -427,6 +467,40 @@ export default async function handler(
           }
         }
       });
+      
+      // Get user name for notification
+      const userName = `${updatedLeaveRequest.user.firstName || ''} ${updatedLeaveRequest.user.lastName || ''}`.trim() || updatedLeaveRequest.user.email;
+      const reviewerName = `${updatedLeaveRequest.reviewer?.firstName || ''} ${updatedLeaveRequest.reviewer?.lastName || ''}`.trim() || 'Administrator';
+      
+      // Format dates for notification
+      const startDateFormatted = new Date(updatedLeaveRequest.startDate).toLocaleDateString();
+      const endDateFormatted = new Date(updatedLeaveRequest.endDate).toLocaleDateString();
+      
+      if (status === 'APPROVED') {
+        // Send approval notification to the employee
+        await sendNotificationToUser(
+          updatedLeaveRequest.user.id,
+          'Leave Request Approved',
+          `Your request for ${updatedLeaveRequest.totalDays} days of ${updatedLeaveRequest.leaveType.name} from ${startDateFormatted} to ${endDateFormatted} has been approved by ${reviewerName}.`,
+          {
+            url: '/dashboard?tab=leave',
+            tag: 'leave-approved',
+            requireInteraction: true,
+          }
+        );
+      } else {
+        // Send rejection notification to the employee
+        await sendNotificationToUser(
+          updatedLeaveRequest.user.id,
+          'Leave Request Rejected',
+          `Your request for ${updatedLeaveRequest.totalDays} days of ${updatedLeaveRequest.leaveType.name} from ${startDateFormatted} to ${endDateFormatted} has been rejected by ${reviewerName}. Reason: ${rejectionReason}`,
+          {
+            url: '/dashboard?tab=leave',
+            tag: 'leave-rejected',
+            requireInteraction: true,
+          }
+        );
+      }
       
       return res.status(200).json(updatedLeaveRequest);
     } catch (error) {

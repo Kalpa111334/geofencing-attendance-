@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { FaUser, FaSpinner, FaSave } from 'react-icons/fa';
 import { useAuth } from '@/contexts/AuthContext';
+import NotificationSettings from './NotificationSettings';
 
 interface UserData {
   id: string;
@@ -111,13 +112,14 @@ const UserProfile: React.FC = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>User Profile</CardTitle>
-        <CardDescription>
-          Update your personal information
-        </CardDescription>
-      </CardHeader>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>User Profile</CardTitle>
+          <CardDescription>
+            Update your personal information
+          </CardDescription>
+        </CardHeader>
       {loading ? (
         <CardContent className="flex justify-center py-6">
           <FaSpinner className="animate-spin h-6 w-6 text-primary" />
@@ -211,6 +213,10 @@ const UserProfile: React.FC = () => {
         </form>
       )}
     </Card>
+    
+    {/* Notification Settings */}
+    {!loading && <NotificationSettings />}
+    </div>
   );
 };
 

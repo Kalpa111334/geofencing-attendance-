@@ -1,5 +1,6 @@
 import type { AppProps } from 'next/app'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { NotificationProvider } from '@/contexts/NotificationContext'
 import '../styles/globals.css';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Toaster } from "@/components/ui/toaster"
@@ -37,10 +38,12 @@ export default function App({ Component, pageProps }: AppProps) {
       </Head>
       <div className="min-h-screen mobile-safe-top mobile-safe-bottom">
         <AuthProvider>
-          <ProtectedRoute>
-            <Component {...pageProps} />
-          </ProtectedRoute>
-          <Toaster />
+          <NotificationProvider>
+            <ProtectedRoute>
+              <Component {...pageProps} />
+            </ProtectedRoute>
+            <Toaster />
+          </NotificationProvider>
         </AuthProvider>
       </div>
     </>

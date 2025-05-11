@@ -25,6 +25,7 @@ model User {
   reviewedLeaves LeaveRequest[]  @relation("LeaveReviewer")
   workShifts     WorkShift[]     @relation("EmployeeWorkShifts")
   rosters        Roster[]        @relation("EmployeeRosters")
+  notifications  NotificationSubscription[]
 }
 
 enum UserRole {
@@ -160,4 +161,37 @@ model Roster {
   notes       String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model NotificationSubscription {
+  id           String   @id @default(uuid())
+  userId       String   @db.Uuid
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint     String   @unique
+  p256dh       String
+  auth         String
+  expirationTime DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Notification {
+  id           String   @id @default(uuid())
+  title        String
+  body         String
+  icon         String?
+  url          String?
+  tag          String?
+  userId       String?  @db.Uuid
+  read         Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+model DailyReport {
+  id           String   @id @default(uuid())
+  date         DateTime
+  reportType   String   // "ATTENDANCE", "LEAVE", etc.
+  reportData   Json
+  generatedAt  DateTime @default(now())
+  sentToUsers  Boolean  @default(false)
 }
