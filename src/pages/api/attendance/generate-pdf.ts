@@ -18,6 +18,18 @@ export default async function handler(
   // Check if the user is an admin for certain operations
   const userData = await prisma.user.findUnique({
     where: { id: user.id },
+    include: {
+      // Include any related data needed for the report
+      attendances: {
+        include: {
+          location: true
+        },
+        orderBy: {
+          checkInTime: 'desc'
+        },
+        take: 5 // Get recent attendances for the report preview
+      }
+    }
   });
 
   if (!userData) {
@@ -27,7 +39,7 @@ export default async function handler(
   // Handle POST request - Generate attendance PDF data
   if (req.method === 'POST') {
     try {
-      const { userId, startDate, endDate, includeDetails } = req.body;
+      const { userId, startDate, endDate, includeDetails, locationId } = req.body;
 
       // Validate required fields
       if (!startDate || !endDate) {
@@ -58,17 +70,34 @@ export default async function handler(
       // Set end date to end of day
       parsedEndDate.setHours(23, 59, 59, 999);
 
+      // Build the where clause for attendance query
+      const whereClause: any = {
+        userId: targetUserId,
+        checkInTime: {
+          gte: parsedStartDate,
+          lte: parsedEndDate,
+        },
+      };
+
+      // Add location filter if provided
+      if (locationId) {
+        whereClause.locationId = locationId;
+      }
+
       // Fetch attendance records
       const attendances = await prisma.attendance.findMany({
-        where: {
-          userId: targetUserId,
-          checkInTime: {
-            gte: parsedStartDate,
-            lte: parsedEndDate,
-          },
-        },
+        where: whereClause,
         include: {
           location: true,
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true,
+              department: true,
+              position: true
+            }
+          }
         },
         orderBy: { checkInTime: 'asc' },
       });
@@ -100,17 +129,34 @@ export default async function handler(
 
       const averageWorkHours = daysWithCompleteRecords > 0 ? totalWorkHours / daysWithCompleteRecords : 0;
 
-      // Format attendance records for PDF
-      const formattedAttendances = attendances.map(attendance => ({
-        date: format(new Date(attendance.checkInTime), 'yyyy-MM-dd'),
-        location: attendance.location.name,
-        checkIn: format(new Date(attendance.checkInTime), 'HH:mm:ss'),
-        checkOut: attendance.checkOutTime ? format(new Date(attendance.checkOutTime), 'HH:mm:ss') : 'N/A',
-        duration: attendance.checkOutTime 
-          ? calculateDuration(attendance.checkInTime, attendance.checkOutTime) 
-          : 'N/A',
-        status: attendance.status,
-      }));
+      // Format attendance records for PDF with the requested structure
+      const formattedAttendances = attendances.map(attendance => {
+        // Calculate duration
+        let duration = 'N/A';
+        if (attendance.checkInTime && attendance.checkOutTime) {
+          const checkIn = new Date(attendance.checkInTime).getTime();
+          const checkOut = new Date(attendance.checkOutTime).getTime();
+          const durationMs = checkOut - checkIn;
+          
+          const hours = Math.floor(durationMs / (1000 * 60 * 60));
+          const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+          
+          duration = `${hours}h ${minutes}m`;
+        }
+
+        // Format employee name
+        const employeeName = `${attendance.user.firstName || ''} ${attendance.user.lastName || ''}`.trim() || attendance.user.email;
+
+        return {
+          date: format(new Date(attendance.checkInTime), 'yyyy-MM-dd'),
+          employee: employeeName,
+          location: attendance.location.name,
+          checkIn: format(new Date(attendance.checkInTime), 'HH:mm:ss'),
+          checkOut: attendance.checkOutTime ? format(new Date(attendance.checkOutTime), 'HH:mm:ss') : 'N/A',
+          duration: duration,
+          status: attendance.status,
+        };
+      });
 
       // Prepare the response data
       const pdfData = {
@@ -120,7 +166,7 @@ export default async function handler(
           email: targetUser.email,
           department: targetUser.department || 'N/A',
           position: targetUser.position || 'N/A',
-          employeeId: targetUser.id || 'N/A', // Use user.id instead of employeeId which doesn't exist
+          employeeId: targetUser.id || 'N/A',
         },
         summary: {
           totalDays,
