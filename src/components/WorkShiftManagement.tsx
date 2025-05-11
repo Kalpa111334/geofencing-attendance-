@@ -223,7 +223,24 @@ const WorkShiftManagement: React.FC = () => {
         throw new Error(errorData.error || 'Failed to remove employee relationships');
       }
 
-      // Then delete the work shift
+      // Parse the response
+      const removeEmployeesData = await removeEmployeesResponse.json();
+      
+      // Check if we got a new work shift ID (fallback approach was used)
+      if (removeEmployeesData.newWorkShiftId) {
+        toast({
+          title: 'Success',
+          description: 'Work shift replaced successfully',
+        });
+        
+        // Close dialog and refresh data
+        setShowDeleteDialog(false);
+        setSelectedWorkShift(null);
+        fetchWorkShifts();
+        return;
+      }
+
+      // If we didn't get a new work shift ID, proceed with normal deletion
       const deleteResponse = await fetch(`/api/work-shifts/${selectedWorkShift.id}`, {
         method: 'DELETE',
       });

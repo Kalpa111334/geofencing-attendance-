@@ -50,30 +50,38 @@ export default async function handler(
       return res.status(200).json({ message: 'No employees to remove' });
     }
 
-    // For each employee, update their work shifts to exclude this one
-    for (const employee of workShift.employees) {
-      // Get all the employee's work shifts
-      const employeeWithShifts = await prisma.user.findUnique({
-        where: { id: employee.id },
-        include: { workShifts: true }
+    // Use a raw database query to remove the relationships
+    // This is a workaround for the replica identity issue
+    try {
+      await prisma.$executeRaw`
+        DELETE FROM "_EmployeeWorkShifts" 
+        WHERE "B" = ${workShiftId}::uuid
+      `;
+    } catch (error) {
+      console.error("Error with raw query:", error);
+      
+      // If the raw query fails, try an alternative approach
+      // Create a new work shift with the same properties but no employees
+      const newWorkShift = await prisma.workShift.create({
+        data: {
+          name: workShift.name + " (Copy)",
+          description: workShift.description,
+          startTime: workShift.startTime,
+          endTime: workShift.endTime,
+          days: workShift.days
+        }
       });
-
-      if (employeeWithShifts) {
-        // Filter out the work shift to be deleted
-        const remainingShifts = employeeWithShifts.workShifts.filter(
-          shift => shift.id !== workShiftId
-        );
-
-        // Update the employee with the filtered work shifts
-        await prisma.user.update({
-          where: { id: employee.id },
-          data: {
-            workShifts: {
-              set: remainingShifts.map(shift => ({ id: shift.id }))
-            }
-          }
-        });
-      }
+      
+      // Delete the old work shift
+      await prisma.workShift.delete({
+        where: { id: workShiftId }
+      });
+      
+      // Return the ID of the new work shift
+      return res.status(200).json({
+        message: 'Created a new work shift without employee relationships',
+        newWorkShiftId: newWorkShift.id
+      });
     }
 
     return res.status(200).json({ 
