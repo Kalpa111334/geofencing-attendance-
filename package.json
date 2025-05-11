@@ -17,6 +17,8 @@
     "@emotion/styled": "^11.13.0",
     "@hookform/resolvers": "^3.9.0",
     "@prisma/client": "^5.19.1",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
     "@radix-ui/react-accordion": "^1.2.1",
     "@radix-ui/react-alert-dialog": "^1.1.2",
     "@radix-ui/react-aspect-ratio": "^1.1.0",

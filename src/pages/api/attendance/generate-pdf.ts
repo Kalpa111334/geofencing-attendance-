@@ -120,6 +120,7 @@ export default async function handler(
           email: targetUser.email,
           department: targetUser.department || 'N/A',
           position: targetUser.position || 'N/A',
+          employeeId: targetUser.employeeId || 'N/A',
         },
         summary: {
           totalDays,
@@ -129,10 +130,20 @@ export default async function handler(
           attendanceRate: attendanceRate.toFixed(2),
           punctualityRate: punctualityRate.toFixed(2),
           averageWorkHours: averageWorkHours.toFixed(2),
+          startDate: parsedStartDate.toISOString(),
+          endDate: parsedEndDate.toISOString(),
+          // Add performance indicators
+          performanceStatus: attendanceRate >= 90 ? 'Excellent' : attendanceRate >= 80 ? 'Good' : attendanceRate >= 70 ? 'Average' : 'Needs Improvement',
+          punctualityStatus: punctualityRate >= 90 ? 'Excellent' : punctualityRate >= 80 ? 'Good' : punctualityRate >= 70 ? 'Average' : 'Needs Improvement',
         },
         attendances: includeDetails ? formattedAttendances : [],
         generatedAt: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
         generatedBy: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || userData.email,
+        companyInfo: {
+          name: 'Employee Management System',
+          contact: 'support@employeemanagementsystem.com',
+          website: 'www.employeemanagementsystem.com'
+        }
       };
 
       return res.status(200).json(pdfData);
