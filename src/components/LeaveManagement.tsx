@@ -230,15 +230,6 @@ const LeaveManagement: React.FC = () => {
       return;
     }
     
-    if (reason.length < 50) {
-      toast({
-        variant: 'destructive',
-        title: 'Reason too short',
-        description: 'Reason must be at least 50 characters long',
-      });
-      return;
-    }
-    
     if (startDate > endDate) {
       toast({
         variant: 'destructive',
@@ -527,19 +518,16 @@ const LeaveManagement: React.FC = () => {
                 {/* Reason */}
                 <div className="space-y-2">
                   <Label htmlFor="reason">
-                    Reason for Leave * <span className="text-xs text-muted-foreground">(minimum 50 characters)</span>
+                    Reason for Leave *
                   </Label>
                   <Textarea
                     id="reason"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    placeholder="Please provide a detailed reason for your leave request..."
+                    placeholder="Please provide a reason for your leave request..."
                     disabled={isSubmitting}
                     rows={4}
                   />
-                  <div className="text-xs text-muted-foreground">
-                    {reason.length}/50 characters
-                  </div>
                 </div>
                 
                 {/* Supporting Documents */}
@@ -598,7 +586,7 @@ const LeaveManagement: React.FC = () => {
             <CardFooter className="flex flex-col items-center gap-3">
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || (selectedLeaveTypeId === 'custom' && !customLeaveType) || !startDate || !endDate || reason.length < 50}
+                disabled={isSubmitting || (selectedLeaveTypeId === 'custom' && !customLeaveType) || !startDate || !endDate || !reason}
                 className="w-full md:w-2/3 lg:w-1/2 py-6 text-lg"
                 size="lg"
                 type="button"
@@ -634,13 +622,13 @@ const LeaveManagement: React.FC = () => {
                       Please select an end date
                     </div>
                   )}
-                  {reason.length < 50 && (
+                  {!reason && (
                     <div className="flex items-center text-amber-600">
                       <FaInfoCircle className="mr-1 h-3 w-3" />
-                      Reason must be at least 50 characters ({reason.length}/50)
+                      Please enter a reason for your leave
                     </div>
                   )}
-                  {(!(selectedLeaveTypeId === 'custom' && !customLeaveType) && startDate && endDate && reason.length >= 50) && (
+                  {(!(selectedLeaveTypeId === 'custom' && !customLeaveType) && startDate && endDate && reason) && (
                     <div className="flex items-center text-green-600">
                       <FaCheck className="mr-1 h-3 w-3" />
                       All required fields completed
