@@ -64,9 +64,20 @@ export default async function handler(
       }
     });
 
-    // Then, delete all relationships between employees and work shifts using a direct approach
+    // Then, disconnect all employees from all work shifts one by one
     // This avoids the replica identity issue with the _EmployeeWorkShifts table
-    await prisma.$executeRaw`DELETE FROM "_EmployeeWorkShifts"`;
+    for (const workShift of workShifts) {
+      if (workShift.employees.length > 0) {
+        await prisma.workShift.update({
+          where: { id: workShift.id },
+          data: {
+            employees: {
+              disconnect: workShift.employees.map(emp => ({ id: emp.id }))
+            }
+          }
+        });
+      }
+    }
 
     // Finally, delete all work shifts
     const deletedCount = await prisma.workShift.deleteMany({});
