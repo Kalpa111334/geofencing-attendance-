@@ -78,6 +78,7 @@ const WorkShiftManagement: React.FC = () => {
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState<boolean>(false);
   const [selectedWorkShift, setSelectedWorkShift] = useState<WorkShift | null>(null);
   
   // Form state
@@ -269,6 +270,39 @@ const WorkShiftManagement: React.FC = () => {
     }
   };
 
+  // Handle delete all work shifts
+  const handleDeleteAll = async () => {
+    try {
+      // Call the delete-all API endpoint
+      const response = await fetch('/api/work-shifts/delete-all', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete all work shifts');
+      }
+
+      const data = await response.json();
+
+      toast({
+        title: 'Success',
+        description: `Successfully deleted ${data.deletedCount} work shifts`,
+      });
+
+      // Close dialog and refresh data
+      setShowDeleteAllDialog(false);
+      fetchWorkShifts();
+    } catch (error: any) {
+      console.error('Error deleting all work shifts:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to delete all work shifts',
+      });
+    }
+  };
+
   // Reset form state
   const resetForm = () => {
     setName('');
@@ -321,10 +355,22 @@ const WorkShiftManagement: React.FC = () => {
               Create and manage employee work shifts
             </CardDescription>
           </div>
-          <Button onClick={() => setIsCreating(true)} className="w-full sm:w-auto">
-            <FaPlus className="mr-2 h-4 w-4" />
-            New Work Shift
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={() => setIsCreating(true)} className="w-full sm:w-auto">
+              <FaPlus className="mr-2 h-4 w-4" />
+              New Work Shift
+            </Button>
+            {workShifts.length > 0 && (
+              <Button 
+                variant="destructive" 
+                onClick={() => setShowDeleteAllDialog(true)} 
+                className="w-full sm:w-auto"
+              >
+                <FaTrash className="mr-2 h-4 w-4" />
+                Delete All
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -572,6 +618,39 @@ const WorkShiftManagement: React.FC = () => {
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
             <Button variant="destructive" onClick={handleDelete}>
               Delete Work Shift
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete All Confirmation Dialog */}
+      <Dialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FaExclamationTriangle className="text-destructive" />
+              Delete All Work Shifts
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete ALL work shifts? This action cannot be undone and will remove all {workShifts.length} work shifts.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="p-3 bg-destructive/10 rounded-md border border-destructive/20">
+              <p className="text-sm font-medium text-destructive">Warning:</p>
+              <ul className="text-sm mt-2 list-disc pl-5 space-y-1">
+                <li>All employee assignments to these shifts will be removed</li>
+                <li>Any rosters using these shifts will be deleted</li>
+                <li>This action is permanent and cannot be reversed</li>
+              </ul>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteAllDialog(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteAll}>
+              Delete All Work Shifts
             </Button>
           </DialogFooter>
         </DialogContent>
