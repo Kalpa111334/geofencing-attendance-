@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createClient } from '@/util/supabase/component';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -38,10 +39,65 @@ const DashboardOverview: React.FC = () => {
   const [initializingLeaveTypes, setInitializingLeaveTypes] = useState<boolean>(false);
   const { toast } = useToast();
 
-  // Fetch dashboard stats on component mount
+  // Reference to store Supabase subscription
+  const supabaseSubscription = useRef<any>(null);
+
+  // Fetch dashboard stats on component mount and set up real-time subscription
   useEffect(() => {
     fetchDashboardStats();
+    setupRealtimeSubscription();
+
+    // Cleanup subscription on component unmount
+    return () => {
+      if (supabaseSubscription.current) {
+        supabaseSubscription.current.unsubscribe();
+      }
+    };
   }, []);
+
+  // Set up real-time subscription to attendance changes
+  const setupRealtimeSubscription = async () => {
+    try {
+      const supabase = createClient();
+      
+      // Subscribe to attendance table changes
+      supabaseSubscription.current = supabase
+        .channel('attendance-changes')
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'Attendance' 
+          }, 
+          (payload) => {
+            console.log('Real-time attendance update received:', payload);
+            // Refresh dashboard data when attendance changes
+            fetchDashboardStats();
+            
+            // Show toast notification for real-time update
+            const eventType = payload.eventType;
+            if (eventType === 'INSERT') {
+              toast({
+                title: 'New Check-in',
+                description: 'An employee has just checked in',
+                variant: 'default',
+              });
+            } else if (eventType === 'UPDATE') {
+              toast({
+                title: 'Check-out',
+                description: 'An employee has just checked out',
+                variant: 'default',
+              });
+            }
+          }
+        )
+        .subscribe();
+      
+      console.log('Real-time subscription to attendance changes set up');
+    } catch (error) {
+      console.error('Error setting up real-time subscription:', error);
+    }
+  };
 
   // Fetch dashboard stats from API
   const fetchDashboardStats = async () => {

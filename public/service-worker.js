@@ -1,4 +1,4 @@
-// Service Worker for Push Notifications
+// Service Worker for Push Notifications and Real-time Updates
 
 self.addEventListener('push', function(event) {
   if (event.data) {

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createClient } from '@/util/supabase/component';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -46,12 +47,51 @@ const AttendanceCheckInOut: React.FC = () => {
   const [showPermissionDialog, setShowPermissionDialog] = useState<boolean>(false);
   const { toast } = useToast();
 
-  // Fetch locations and attendance data on component mount
+  // Reference to store Supabase subscription
+  const supabaseSubscription = useRef<any>(null);
+
+  // Fetch locations and attendance data on component mount and set up real-time subscription
   useEffect(() => {
     fetchLocations();
     fetchAttendance();
     checkLocationPermission();
+    setupRealtimeSubscription();
+
+    // Cleanup subscription on component unmount
+    return () => {
+      if (supabaseSubscription.current) {
+        supabaseSubscription.current.unsubscribe();
+      }
+    };
   }, []);
+
+  // Set up real-time subscription to attendance changes
+  const setupRealtimeSubscription = async () => {
+    try {
+      const supabase = createClient();
+      
+      // Subscribe to attendance table changes for the current user
+      supabaseSubscription.current = supabase
+        .channel('employee-attendance-changes')
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'Attendance' 
+          }, 
+          (payload) => {
+            console.log('Real-time attendance update received:', payload);
+            // Refresh attendance data when attendance changes
+            fetchAttendance();
+          }
+        )
+        .subscribe();
+      
+      console.log('Real-time subscription to attendance changes set up');
+    } catch (error) {
+      console.error('Error setting up real-time subscription:', error);
+    }
+  };
 
   // Check location permission
   const checkLocationPermission = async () => {
