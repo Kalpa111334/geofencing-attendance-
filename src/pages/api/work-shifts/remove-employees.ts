@@ -64,39 +64,16 @@ export default async function handler(
       return res.status(200).json({ message: 'No employees to remove' });
     }
 
-    // Use a raw database query to remove the relationships
-    // This is a workaround for the replica identity issue
-    try {
-      await prisma.$executeRaw`
-        DELETE FROM "_EmployeeWorkShifts" 
-        WHERE "B" = ${workShiftId}
-      `;
-    } catch (error) {
-      console.error("Error with raw query:", error);
-      
-      // If the raw query fails, try an alternative approach
-      // Create a new work shift with the same properties but no employees
-      const newWorkShift = await prisma.workShift.create({
-        data: {
-          name: workShift.name + " (Copy)",
-          description: workShift.description,
-          startTime: workShift.startTime,
-          endTime: workShift.endTime,
-          days: workShift.days
+    // Disconnect all employees from the work shift using Prisma's high-level API
+    // This avoids the replica identity issue with the _EmployeeWorkShifts table
+    await prisma.workShift.update({
+      where: { id: workShiftId },
+      data: {
+        employees: {
+          disconnect: workShift.employees.map(emp => ({ id: emp.id }))
         }
-      });
-      
-      // Delete the old work shift
-      await prisma.workShift.delete({
-        where: { id: workShiftId }
-      });
-      
-      // Return the ID of the new work shift
-      return res.status(200).json({
-        message: 'Created a new work shift without employee relationships',
-        newWorkShiftId: newWorkShift.id
-      });
-    }
+      }
+    });
 
     return res.status(200).json({ 
       message: 'Successfully removed all employee relationships from work shift',

@@ -55,18 +55,16 @@ export default async function handler(
       return res.status(200).json({ message: 'No work shifts to delete' });
     }
 
-    // First, delete all rosters associated with any work shift
-    await prisma.roster.deleteMany({
-      where: {
-        workShiftId: {
-          in: workShifts.map(ws => ws.id)
-        }
-      }
-    });
-
-    // Then, disconnect all employees from all work shifts one by one
-    // This avoids the replica identity issue with the _EmployeeWorkShifts table
+    // Process each work shift individually to properly handle relationships
     for (const workShift of workShifts) {
+      // First, delete any associated rosters for this work shift
+      if (workShift.rosters.length > 0) {
+        await prisma.roster.deleteMany({
+          where: { workShiftId: workShift.id }
+        });
+      }
+
+      // Then, disconnect all employees from this work shift
       if (workShift.employees.length > 0) {
         await prisma.workShift.update({
           where: { id: workShift.id },
@@ -77,14 +75,17 @@ export default async function handler(
           }
         });
       }
+      
+      // Finally, delete this work shift
+      await prisma.workShift.delete({
+        where: { id: workShift.id }
+      });
     }
-
-    // Finally, delete all work shifts
-    const deletedCount = await prisma.workShift.deleteMany({});
-
+    
+    // Return success
     return res.status(200).json({ 
       message: 'All work shifts deleted successfully',
-      deletedCount: deletedCount.count
+      deletedCount: workShifts.length
     });
   } catch (error) {
     console.error('Error deleting all work shifts:', error);
