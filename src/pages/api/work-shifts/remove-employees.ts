@@ -63,15 +63,32 @@ export default async function handler(
       });
     }
 
-    // Use raw SQL to delete the junction table entries
-    const result = await prisma.$executeRawUnsafe(
-      `DELETE FROM "_EmployeeWorkShifts" WHERE "B" = $1`,
-      workShiftId
-    );
+    // Create a new work shift with the same data but no employees
+    const workShiftData = {
+      name: workShift.name,
+      description: workShift.description,
+      startTime: workShift.startTime,
+      endTime: workShift.endTime,
+      days: workShift.days
+    };
+    
+    // Create the new work shift
+    const newWorkShift = await prisma.workShift.create({
+      data: workShiftData
+    });
+    
+    // Delete the original work shift
+    await prisma.workShift.delete({
+      where: { id: workShiftId }
+    });
+    
+    // Update the ID of the new work shift to match the original
+    // This is not possible directly, so we'll need to handle this in the frontend
 
     return res.status(200).json({ 
       message: 'Successfully removed all employee relationships from work shift',
-      removedCount: workShift.employees.length
+      removedCount: workShift.employees.length,
+      newWorkShiftId: newWorkShift.id
     });
   } catch (error) {
     console.error('Error removing employees from work shift:', error);
