@@ -9,16 +9,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Verify authentication and admin role
-    const supabase = createClient({ req, res });
-    const { data, error } = await supabase.auth.getUser();
-    
-    if (error || !data.user) {
-      console.error('Authentication error:', error);
-      return res.status(401).json({ error: 'Unauthorized' });
+    // Check if cookies exist in the request
+    if (!req.cookies || Object.keys(req.cookies).length === 0) {
+      return res.status(401).json({ error: 'No authentication cookies found' });
     }
 
-    const user = data.user;
+    let user;
+    try {
+      // Verify authentication
+      const supabase = createClient({ req, res });
+      const { data, error } = await supabase.auth.getUser();
+      
+      if (error || !data.user) {
+        console.error('Authentication error:', error);
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      
+      user = data.user;
+    } catch (authError) {
+      console.error('Error in authentication:', authError);
+      return res.status(401).json({ error: 'Authentication failed' });
+    }
 
     // Check if user is admin using Prisma instead of Supabase
     const userData = await prisma.user.findUnique({

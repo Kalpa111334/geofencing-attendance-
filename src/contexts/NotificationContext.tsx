@@ -99,7 +99,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       });
       
       if (!saveResponse.ok) {
-        throw new Error('Failed to save subscription on server');
+        const errorData = await saveResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to save subscription on server: ${saveResponse.status} ${saveResponse.statusText}`);
       }
       
       setIsSubscribed(true);
@@ -151,7 +152,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       });
       
       if (!response.ok) {
-        throw new Error('Failed to remove subscription from server');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to remove subscription from server: ${response.status} ${response.statusText}`);
       }
       
       setIsSubscribed(false);
@@ -177,7 +179,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       });
       
       if (!response.ok) {
-        throw new Error('Failed to send test notification');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to send test notification: ${response.status} ${response.statusText}`);
       }
       
       toast({
