@@ -6,10 +6,14 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Get the user from the request
-  const supabase = createClient(req, res);
+  // Check if cookies exist in the request
+  if (!req.cookies || Object.keys(req.cookies).length === 0) {
+    return res.status(401).json({ error: 'No authentication cookies found' });
+  }
   
+  // Get the user from the request
   try {
+    const supabase = createClient(req, res);
     const { data, error } = await supabase.auth.getUser();
     
     if (error || !data.user) {
