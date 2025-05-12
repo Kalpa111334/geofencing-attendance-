@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,16 +19,8 @@ import {
   DialogDescription, 
   DialogFooter, 
   DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+  DialogTitle
 } from '@/components/ui/dialog';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   FaPlus, 
@@ -38,9 +30,15 @@ import {
   FaClock, 
   FaCalendarDay, 
   FaUsers,
-  FaExclamationTriangle
+  FaExclamationTriangle,
+  FaUserMinus,
+  FaInfoCircle
 } from 'react-icons/fa';
 import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface User {
   id: string;
@@ -79,10 +77,13 @@ const WorkShiftManagement: React.FC = () => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState<boolean>(false);
+  const [showRemoveEmployeesDialog, setShowRemoveEmployeesDialog] = useState<boolean>(false);
   const [selectedWorkShift, setSelectedWorkShift] = useState<WorkShift | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
   const [deleteAllLoading, setDeleteAllLoading] = useState<boolean>(false);
+  const [removeEmployeesLoading, setRemoveEmployeesLoading] = useState<boolean>(false);
   const [submitLoading, setSubmitLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Form state
   const [name, setName] = useState<string>('');
@@ -104,18 +105,23 @@ const WorkShiftManagement: React.FC = () => {
   const fetchWorkShifts = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await fetch('/api/work-shifts');
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch work shifts');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch work shifts');
       }
+      
       const data = await response.json();
       setWorkShifts(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching work shifts:', error);
+      setError(error.message || 'Failed to fetch work shifts');
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to fetch work shifts',
+        description: error.message || 'Failed to fetch work shifts',
       });
     } finally {
       setLoading(false);
@@ -126,17 +132,20 @@ const WorkShiftManagement: React.FC = () => {
   const fetchUsers = async () => {
     try {
       const response = await fetch('/api/users');
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch users');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch users');
       }
+      
       const data = await response.json();
       setUsers(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching users:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to fetch users',
+        description: error.message || 'Failed to fetch users',
       });
     }
   };
@@ -145,6 +154,7 @@ const WorkShiftManagement: React.FC = () => {
   const handleSubmit = async () => {
     try {
       setSubmitLoading(true);
+      setError(null);
       
       // Validate form
       if (!name || !startTime || !endTime || selectedDays.length === 0) {
@@ -202,6 +212,7 @@ const WorkShiftManagement: React.FC = () => {
       fetchWorkShifts();
     } catch (error: any) {
       console.error('Error saving work shift:', error);
+      setError(error.message || 'Failed to save work shift');
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -218,6 +229,7 @@ const WorkShiftManagement: React.FC = () => {
     
     try {
       setDeleteLoading(true);
+      setError(null);
       
       // Delete the work shift
       const response = await fetch(`/api/work-shifts/${selectedWorkShift.id}`, {
@@ -240,6 +252,7 @@ const WorkShiftManagement: React.FC = () => {
       fetchWorkShifts();
     } catch (error: any) {
       console.error('Error deleting work shift:', error);
+      setError(error.message || 'Failed to delete work shift');
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -254,6 +267,7 @@ const WorkShiftManagement: React.FC = () => {
   const handleDeleteAll = async () => {
     try {
       setDeleteAllLoading(true);
+      setError(null);
       
       // Call the delete-all API endpoint
       const response = await fetch('/api/work-shifts/delete-all', {
@@ -280,6 +294,7 @@ const WorkShiftManagement: React.FC = () => {
       fetchWorkShifts();
     } catch (error: any) {
       console.error('Error deleting all work shifts:', error);
+      setError(error.message || 'Failed to delete all work shifts');
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -287,6 +302,52 @@ const WorkShiftManagement: React.FC = () => {
       });
     } finally {
       setDeleteAllLoading(false);
+    }
+  };
+
+  // Handle remove all employees from work shift
+  const handleRemoveEmployees = async () => {
+    if (!selectedWorkShift) return;
+    
+    try {
+      setRemoveEmployeesLoading(true);
+      setError(null);
+      
+      // Call the remove-employees API endpoint
+      const response = await fetch('/api/work-shifts/remove-employees', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ workShiftId: selectedWorkShift.id }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to remove employees from work shift');
+      }
+
+      const data = await response.json();
+
+      toast({
+        title: 'Success',
+        description: `Successfully removed ${data.removedCount} employees from work shift`,
+      });
+
+      // Close dialog and refresh data
+      setShowRemoveEmployeesDialog(false);
+      setSelectedWorkShift(null);
+      fetchWorkShifts();
+    } catch (error: any) {
+      console.error('Error removing employees from work shift:', error);
+      setError(error.message || 'Failed to remove employees from work shift');
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to remove employees from work shift',
+      });
+    } finally {
+      setRemoveEmployeesLoading(false);
     }
   };
 
@@ -301,6 +362,7 @@ const WorkShiftManagement: React.FC = () => {
     setIsCreating(false);
     setIsEditing(false);
     setSelectedWorkShift(null);
+    setError(null);
   };
 
   // Set form values for editing
@@ -314,15 +376,20 @@ const WorkShiftManagement: React.FC = () => {
     setSelectedEmployees(workShift.employees.map(emp => emp.id));
     setIsEditing(true);
     setIsCreating(true);
+    setError(null);
   };
 
   // Format time for display
   const formatTime = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':');
-    const date = new Date();
-    date.setHours(parseInt(hours, 10));
-    date.setMinutes(parseInt(minutes, 10));
-    return format(date, 'h:mm a');
+    try {
+      const [hours, minutes] = timeString.split(':');
+      const date = new Date();
+      date.setHours(parseInt(hours, 10));
+      date.setMinutes(parseInt(minutes, 10));
+      return format(date, 'h:mm a');
+    } catch (error) {
+      return timeString; // Fallback to original string if parsing fails
+    }
   };
 
   // Get employee name
@@ -332,8 +399,40 @@ const WorkShiftManagement: React.FC = () => {
       : employee.email;
   };
 
+  // Format days for display
+  const formatDays = (days: string[]) => {
+    if (days.length === 7) {
+      return 'All days';
+    } else if (days.length === 5 && 
+               days.includes('Monday') && 
+               days.includes('Tuesday') && 
+               days.includes('Wednesday') && 
+               days.includes('Thursday') && 
+               days.includes('Friday')) {
+      return 'Weekdays';
+    } else if (days.length === 2 && 
+               days.includes('Saturday') && 
+               days.includes('Sunday')) {
+      return 'Weekends';
+    } else {
+      return days.join(', ');
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="bg-destructive/15 border border-destructive rounded-md p-4 mb-4">
+          <div className="flex items-start">
+            <FaExclamationTriangle className="text-destructive mt-0.5 mr-3 h-5 w-5" />
+            <div>
+              <h3 className="text-sm font-medium text-destructive">Error</h3>
+              <p className="text-sm mt-1">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Card>
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-2">
           <div>
@@ -393,6 +492,10 @@ const WorkShiftManagement: React.FC = () => {
                                 <FaClock className="mr-1 h-3 w-3" />
                                 {formatTime(workShift.startTime)} - {formatTime(workShift.endTime)}
                               </div>
+                              <div className="flex items-center mt-1">
+                                <FaUsers className="mr-1 h-3 w-3" />
+                                {workShift.employees.length} assigned
+                              </div>
                             </div>
                           </div>
                         </TableCell>
@@ -406,11 +509,7 @@ const WorkShiftManagement: React.FC = () => {
                           <div className="flex items-center">
                             <FaCalendarDay className="mr-2 h-3 w-3 text-muted-foreground" />
                             <span className="text-sm">
-                              {workShift.days.length === 7 
-                                ? 'All days' 
-                                : workShift.days.length === 5 && workShift.days.includes('Monday') && workShift.days.includes('Friday')
-                                  ? 'Weekdays'
-                                  : workShift.days.join(', ')}
+                              {formatDays(workShift.days)}
                             </span>
                           </div>
                         </TableCell>
@@ -420,6 +519,27 @@ const WorkShiftManagement: React.FC = () => {
                             <span className="text-sm">
                               {workShift.employees.length} assigned
                             </span>
+                            {workShift.employees.length > 0 && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 ml-1">
+                                      <FaInfoCircle className="h-3 w-3" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <div className="max-w-xs">
+                                      <p className="font-medium mb-1">Assigned Employees:</p>
+                                      <ul className="text-xs space-y-1">
+                                        {workShift.employees.map(emp => (
+                                          <li key={emp.id}>{getEmployeeName(emp)}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
@@ -428,9 +548,25 @@ const WorkShiftManagement: React.FC = () => {
                               variant="outline" 
                               size="sm"
                               onClick={() => prepareEdit(workShift)}
+                              title="Edit work shift"
                             >
                               <FaEdit className="h-4 w-4" />
+                              <span className="sr-only">Edit</span>
                             </Button>
+                            {workShift.employees.length > 0 && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedWorkShift(workShift);
+                                  setShowRemoveEmployeesDialog(true);
+                                }}
+                                title="Remove all employees"
+                              >
+                                <FaUserMinus className="h-4 w-4" />
+                                <span className="sr-only">Remove employees</span>
+                              </Button>
+                            )}
                             <Button 
                               variant="destructive" 
                               size="sm"
@@ -438,8 +574,10 @@ const WorkShiftManagement: React.FC = () => {
                                 setSelectedWorkShift(workShift);
                                 setShowDeleteDialog(true);
                               }}
+                              title="Delete work shift"
                             >
                               <FaTrash className="h-4 w-4" />
+                              <span className="sr-only">Delete</span>
                             </Button>
                           </div>
                         </TableCell>
@@ -451,7 +589,8 @@ const WorkShiftManagement: React.FC = () => {
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No work shifts found. Click "New Work Shift" to create one.
+              <FaInfoCircle className="mx-auto h-8 w-8 mb-2 opacity-50" />
+              <p>No work shifts found. Click "New Work Shift" to create one.</p>
             </div>
           )}
         </CardContent>
@@ -462,7 +601,7 @@ const WorkShiftManagement: React.FC = () => {
         if (!open) resetForm();
         setIsCreating(open);
       }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Edit Work Shift' : 'Create New Work Shift'}</DialogTitle>
             <DialogDescription>
@@ -472,101 +611,110 @@ const WorkShiftManagement: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Shift Name *</Label>
-              <Input 
-                id="name" 
-                value={name} 
-                onChange={(e) => setName(e.target.value)} 
-                placeholder="e.g., Morning Shift"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea 
-                id="description" 
-                value={description} 
-                onChange={(e) => setDescription(e.target.value)} 
-                placeholder="Optional description of this shift"
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <ScrollArea className="flex-grow pr-4">
+            <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="startTime">Start Time *</Label>
+                <Label htmlFor="name">Shift Name *</Label>
                 <Input 
-                  id="startTime" 
-                  type="time" 
-                  value={startTime} 
-                  onChange={(e) => setStartTime(e.target.value)} 
+                  id="name" 
+                  value={name} 
+                  onChange={(e) => setName(e.target.value)} 
+                  placeholder="e.g., Morning Shift"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="endTime">End Time *</Label>
-                <Input 
-                  id="endTime" 
-                  type="time" 
-                  value={endTime} 
-                  onChange={(e) => setEndTime(e.target.value)} 
+                <Label htmlFor="description">Description</Label>
+                <Textarea 
+                  id="description" 
+                  value={description} 
+                  onChange={(e) => setDescription(e.target.value)} 
+                  placeholder="Optional description of this shift"
                 />
               </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Working Days *</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {daysOfWeek.map((day) => (
-                  <div key={day} className="flex items-center space-x-2">
-                    <Checkbox 
-                      id={`day-${day}`} 
-                      checked={selectedDays.includes(day)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedDays([...selectedDays, day]);
-                        } else {
-                          setSelectedDays(selectedDays.filter(d => d !== day));
-                        }
-                      }}
-                    />
-                    <Label htmlFor={`day-${day}`}>{day}</Label>
-                  </div>
-                ))}
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="startTime">Start Time *</Label>
+                  <Input 
+                    id="startTime" 
+                    type="time" 
+                    value={startTime} 
+                    onChange={(e) => setStartTime(e.target.value)} 
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="endTime">End Time *</Label>
+                  <Input 
+                    id="endTime" 
+                    type="time" 
+                    value={endTime} 
+                    onChange={(e) => setEndTime(e.target.value)} 
+                  />
+                </div>
               </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Assign Employees</Label>
-              <div className="max-h-40 overflow-y-auto border rounded-md p-2">
-                {users.length > 0 ? (
-                  users.map((user) => (
-                    <div key={user.id} className="flex items-center space-x-2 py-1">
+              
+              <div className="space-y-2">
+                <Label>Working Days *</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {daysOfWeek.map((day) => (
+                    <div key={day} className="flex items-center space-x-2">
                       <Checkbox 
-                        id={`user-${user.id}`} 
-                        checked={selectedEmployees.includes(user.id)}
+                        id={`day-${day}`} 
+                        checked={selectedDays.includes(day)}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            setSelectedEmployees([...selectedEmployees, user.id]);
+                            setSelectedDays([...selectedDays, day]);
                           } else {
-                            setSelectedEmployees(selectedEmployees.filter(id => id !== user.id));
+                            setSelectedDays(selectedDays.filter(d => d !== day));
                           }
                         }}
                       />
-                      <Label htmlFor={`user-${user.id}`}>{getEmployeeName(user)}</Label>
+                      <Label htmlFor={`day-${day}`} className="cursor-pointer">{day}</Label>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-2 text-muted-foreground">
-                    No employees found
-                  </div>
-                )}
+                  ))}
+                </div>
+              </div>
+              
+              <Separator className="my-4" />
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Assign Employees</Label>
+                  <Badge variant="outline" className="ml-2">
+                    {selectedEmployees.length} selected
+                  </Badge>
+                </div>
+                <div className="max-h-40 overflow-y-auto border rounded-md p-2">
+                  {users.length > 0 ? (
+                    users.map((user) => (
+                      <div key={user.id} className="flex items-center space-x-2 py-1">
+                        <Checkbox 
+                          id={`user-${user.id}`} 
+                          checked={selectedEmployees.includes(user.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedEmployees([...selectedEmployees, user.id]);
+                            } else {
+                              setSelectedEmployees(selectedEmployees.filter(id => id !== user.id));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`user-${user.id}`} className="cursor-pointer">{getEmployeeName(user)}</Label>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-2 text-muted-foreground">
+                      No employees found
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          </ScrollArea>
           
-          <DialogFooter>
+          <DialogFooter className="pt-4">
             <Button variant="outline" onClick={resetForm} disabled={submitLoading}>Cancel</Button>
             <Button onClick={handleSubmit} disabled={submitLoading}>
               {submitLoading ? (
@@ -600,11 +748,20 @@ const WorkShiftManagement: React.FC = () => {
               <p className="font-medium">{selectedWorkShift.name}</p>
               <p className="text-sm text-muted-foreground">
                 {formatTime(selectedWorkShift.startTime)} - {formatTime(selectedWorkShift.endTime)}, 
-                {selectedWorkShift.days.join(', ')}
+                {formatDays(selectedWorkShift.days)}
               </p>
               <p className="text-sm text-muted-foreground mt-2">
                 {selectedWorkShift.employees.length} employees assigned to this shift
               </p>
+              
+              {selectedWorkShift.employees.length > 0 && (
+                <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-400">Warning:</p>
+                  <p className="text-sm mt-1 text-amber-700 dark:text-amber-500">
+                    This will remove all employee assignments to this shift.
+                  </p>
+                </div>
+              )}
             </div>
           )}
           
@@ -658,6 +815,53 @@ const WorkShiftManagement: React.FC = () => {
                 </>
               ) : (
                 'Delete All Work Shifts'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Employees Confirmation Dialog */}
+      <Dialog open={showRemoveEmployeesDialog} onOpenChange={setShowRemoveEmployeesDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FaUserMinus className="text-amber-500" />
+              Remove All Employees
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove all employees from this work shift?
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedWorkShift && (
+            <div className="py-4">
+              <p className="font-medium">{selectedWorkShift.name}</p>
+              <p className="text-sm text-muted-foreground">
+                Currently has {selectedWorkShift.employees.length} assigned employees
+              </p>
+              
+              <div className="mt-4 max-h-32 overflow-y-auto">
+                <p className="text-sm font-medium mb-1">Assigned employees:</p>
+                <ul className="text-sm space-y-1 pl-5 list-disc">
+                  {selectedWorkShift.employees.map(emp => (
+                    <li key={emp.id}>{getEmployeeName(emp)}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRemoveEmployeesDialog(false)} disabled={removeEmployeesLoading}>Cancel</Button>
+            <Button variant="default" onClick={handleRemoveEmployees} disabled={removeEmployeesLoading}>
+              {removeEmployeesLoading ? (
+                <>
+                  <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
+                  Removing...
+                </>
+              ) : (
+                'Remove All Employees'
               )}
             </Button>
           </DialogFooter>

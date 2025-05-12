@@ -47,45 +47,20 @@ export default async function handler(
       });
     }
 
-    // Get all work shifts
-    const shifts = await prisma.workShift.findMany({
-      select: { id: true }
-    });
-    
-    // Delete all rosters first
+    // Delete all rosters first (no replica identity issues here)
     await prisma.roster.deleteMany({});
     
-    // Create a new client with no replica identity constraints
-    // This is a workaround for the replica identity issue
-    const result = shifts.length;
+    // Count for response
+    const deletedCount = workShifts.length;
     
-    // Process each work shift individually
-    for (const shift of shifts) {
-      // Create a new work shift with no employees (to replace the existing one)
-      const newShift = await prisma.workShift.create({
-        data: {
-          name: `temp_${shift.id}`,
-          startTime: "00:00",
-          endTime: "00:00",
-          days: []
-        }
-      });
-      
-      // Delete the original work shift
-      await prisma.workShift.delete({
-        where: { id: shift.id }
-      });
-      
-      // Delete the temporary work shift
-      await prisma.workShift.delete({
-        where: { id: newShift.id }
-      });
-    }
-
+    // Use direct SQL to avoid replica identity issues
+    // This is a safer approach that bypasses Prisma's ORM layer for this specific operation
+    await prisma.$executeRaw`TRUNCATE TABLE "WorkShift" CASCADE`;
+    
     // Return success
     return res.status(200).json({ 
-      message: `Successfully deleted ${result} work shifts`,
-      deletedCount: result
+      message: `Successfully deleted ${deletedCount} work shifts`,
+      deletedCount: deletedCount
     });
   } catch (error) {
     console.error('Error deleting all work shifts:', error);

@@ -63,32 +63,12 @@ export default async function handler(
       });
     }
 
-    // Create a new work shift with the same data but no employees
-    const workShiftData = {
-      name: workShift.name,
-      description: workShift.description,
-      startTime: workShift.startTime,
-      endTime: workShift.endTime,
-      days: workShift.days
-    };
-    
-    // Create the new work shift
-    const newWorkShift = await prisma.workShift.create({
-      data: workShiftData
-    });
-    
-    // Delete the original work shift
-    await prisma.workShift.delete({
-      where: { id: workShiftId }
-    });
-    
-    // Update the ID of the new work shift to match the original
-    // This is not possible directly, so we'll need to handle this in the frontend
+    // Use direct SQL to remove all employee relationships
+    await prisma.$executeRaw`DELETE FROM "_EmployeeWorkShifts" WHERE "B" = ${workShiftId}::uuid`;
 
     return res.status(200).json({ 
       message: 'Successfully removed all employee relationships from work shift',
-      removedCount: workShift.employees.length,
-      newWorkShiftId: newWorkShift.id
+      removedCount: workShift.employees.length
     });
   } catch (error) {
     console.error('Error removing employees from work shift:', error);
