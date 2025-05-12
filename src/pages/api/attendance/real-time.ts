@@ -1,56 +1,87 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@/util/supabase/api';
 import prisma from '@/lib/prisma';
+import { sendCheckInNotification, sendCheckOutNotification } from '@/util/notifications';
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  // Get the user from the request
-  const supabase = createClient(req, res);
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' });
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Handle POST request - Enable real-time updates for attendance
-  if (req.method === 'POST') {
-    try {
-      // Get user role
-      const userData = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { role: true }
-      });
+  try {
+    // Authenticate user
+    const supabase = createClient({ req, res });
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      console.error('Authentication error:', authError);
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
-      if (!userData) {
-        return res.status(404).json({ error: 'User not found' });
+    // Check if user is admin
+    const userData = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { role: true }
+    });
+
+    if (!userData || userData.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Forbidden: Admin access required' });
+    }
+
+    const { attendanceId, type } = req.body;
+
+    if (!attendanceId || !type) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Get attendance record
+    const attendance = await prisma.attendance.findUnique({
+      where: { id: attendanceId },
+      include: {
+        user: true,
+        location: true,
+      },
+    });
+
+    if (!attendance) {
+      return res.status(404).json({ error: 'Attendance record not found' });
+    }
+
+    let result;
+
+    // Send appropriate notification based on type
+    if (type === 'check-in') {
+      result = await sendCheckInNotification(
+        attendance.userId,
+        attendance.location.name,
+        attendance.checkInTime
+      );
+    } else if (type === 'check-out') {
+      if (!attendance.checkOutTime) {
+        return res.status(400).json({ error: 'Attendance record has no check-out time' });
       }
 
-      // Create a Supabase client for the server
-      const supabase = createClient(req, res);
-      
-      // Return the channel configuration based on user role
-      return res.status(200).json({
-        success: true,
-        channelConfig: {
-          name: userData.role === 'ADMIN' ? 'admin-attendance-updates' : 'employee-attendance-updates',
-          config: {
-            event: '*',
-            schema: 'public',
-            table: 'Attendance',
-            ...(userData.role !== 'ADMIN' && { 
-              filter: `userId=eq.${user.id}` 
-            })
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Error setting up real-time updates:', error);
-      return res.status(500).json({ error: 'Failed to set up real-time updates' });
-    }
-  }
+      const durationMinutes = Math.round(
+        (attendance.checkOutTime.getTime() - attendance.checkInTime.getTime()) / (1000 * 60)
+      );
 
-  // Return 405 for other methods
-  return res.status(405).json({ error: 'Method not allowed' });
+      result = await sendCheckOutNotification(
+        attendance.userId,
+        attendance.location.name,
+        attendance.checkOutTime,
+        durationMinutes
+      );
+    } else {
+      return res.status(400).json({ error: 'Invalid notification type' });
+    }
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Error sending attendance notification:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 }

@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@/util/supabase/api';
 import prisma from '@/lib/prisma';
-import { sendNotificationToRole, sendNotificationToUser } from '@/util/notifications';
+import { sendCheckInNotification, sendCheckOutNotification } from '@/util/notifications';
 import { isWithinRadius } from '@/util/geofencing';
 
 export default async function handler(
@@ -173,41 +173,21 @@ export default async function handler(
             status: isLate ? 'LATE' : 'PRESENT',
           },
           include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true,
-              }
-            },
             location: true,
           }
         });
 
-        // Send notification to admins
-        const userName = `${attendance.user.firstName || ''} ${attendance.user.lastName || ''}`.trim() || attendance.user.email;
-        const status = isLate ? 'late' : 'on time';
-        
-        await sendNotificationToRole(
-          'ADMIN',
-          `Employee Check-In: ${userName}`,
-          `${userName} has checked in at ${attendance.location.name} (${status}) at ${now.toLocaleTimeString()}.`,
-          {
-            url: '/admin-dashboard?tab=attendance',
-            tag: 'check-in',
-          }
-        );
-
-        // Send confirmation notification to the employee
-        await sendNotificationToUser(
-          user.id,
-          'Check-In Successful',
-          `You have successfully checked in at ${attendance.location.name} (${status}) at ${now.toLocaleTimeString()}.`,
-          {
-            url: '/dashboard?tab=my-attendance',
-            tag: 'check-in-confirmation',
-          }
-        );
+        // Send check-in notification
+        try {
+          await sendCheckInNotification(
+            user.id,
+            location.name,
+            now
+          );
+        } catch (notificationError) {
+          console.error('Error sending check-in notification:', notificationError);
+          // Continue even if notification fails
+        }
 
         return res.status(201).json(attendance);
       }
@@ -220,6 +200,9 @@ export default async function handler(
             userId: user.id,
             checkOutTime: null,
           },
+          include: {
+            location: true,
+          }
         });
 
         if (!openAttendance) {
@@ -238,48 +221,26 @@ export default async function handler(
             checkOutLongitude: parseFloat(longitude),
           },
           include: {
-            user: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-              }
-            },
             location: true,
           }
         });
 
-        // Calculate duration in hours and minutes
+        // Calculate duration in minutes
         const checkInTime = new Date(updatedAttendance.checkInTime);
-        const durationMs = now.getTime() - checkInTime.getTime();
-        const hours = Math.floor(durationMs / (1000 * 60 * 60));
-        const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-        const durationText = `${hours}h ${minutes}m`;
+        const durationMinutes = Math.round((now.getTime() - checkInTime.getTime()) / (1000 * 60));
 
-        // Send notification to admins
-        const userName = `${updatedAttendance.user.firstName || ''} ${updatedAttendance.user.lastName || ''}`.trim() || updatedAttendance.user.email;
-        
-        await sendNotificationToRole(
-          'ADMIN',
-          `Employee Check-Out: ${userName}`,
-          `${userName} has checked out from ${updatedAttendance.location.name} at ${now.toLocaleTimeString()}. Duration: ${durationText}`,
-          {
-            url: '/admin-dashboard?tab=attendance',
-            tag: 'check-out',
-          }
-        );
-
-        // Send confirmation notification to the employee
-        await sendNotificationToUser(
-          updatedAttendance.user.id,
-          'Check-Out Successful',
-          `You have successfully checked out from ${updatedAttendance.location.name} at ${now.toLocaleTimeString()}. Duration: ${durationText}`,
-          {
-            url: '/dashboard?tab=my-attendance',
-            tag: 'check-out-confirmation',
-          }
-        );
+        // Send check-out notification
+        try {
+          await sendCheckOutNotification(
+            user.id,
+            updatedAttendance.location.name,
+            now,
+            durationMinutes
+          );
+        } catch (notificationError) {
+          console.error('Error sending check-out notification:', notificationError);
+          // Continue even if notification fails
+        }
 
         return res.status(200).json(updatedAttendance);
       }

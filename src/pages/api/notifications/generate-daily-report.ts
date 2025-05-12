@@ -9,29 +9,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Check if cookies exist in the request
-    if (!req.cookies || Object.keys(req.cookies).length === 0) {
-      return res.status(401).json({ error: 'No authentication cookies found' });
+    // Authenticate user
+    const supabase = createClient({ req, res });
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      console.error('Authentication error:', authError);
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    let user;
-    try {
-      // Verify authentication
-      const supabase = createClient({ req, res });
-      const { data, error } = await supabase.auth.getUser();
-      
-      if (error || !data.user) {
-        console.error('Authentication error:', error);
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-      
-      user = data.user;
-    } catch (authError) {
-      console.error('Error in authentication:', authError);
-      return res.status(401).json({ error: 'Authentication failed' });
-    }
-
-    // Check if user is admin using Prisma instead of Supabase
+    // Check if user is admin
     const userData = await prisma.user.findUnique({
       where: { id: user.id },
       select: { role: true }
@@ -48,7 +35,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: result.error });
     }
 
-    return res.status(200).json({ success: true, reportId: result.reportId });
+    return res.status(200).json({ 
+      success: true, 
+      reportId: result.reportId,
+      notificationResult: result.notificationResult
+    });
   } catch (error) {
     console.error('Error generating daily report:', error);
     return res.status(500).json({ error: 'Internal server error' });

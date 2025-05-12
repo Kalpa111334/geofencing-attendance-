@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@/util/supabase/api';
+import { initWebPush } from '@/util/notifications';
 import prisma from '@/lib/prisma';
 import webpush from 'web-push';
 
@@ -9,34 +10,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Check if cookies exist in the request
-    if (!req.cookies || Object.keys(req.cookies).length === 0) {
-      return res.status(401).json({ error: 'No authentication cookies found' });
+    // Authenticate user
+    const supabase = createClient({ req, res });
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      console.error('Authentication error:', authError);
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    let user;
-    try {
-      // Verify authentication
-      const supabase = createClient({ req, res });
-      const { data, error } = await supabase.auth.getUser();
-      
-      if (error || !data.user) {
-        console.error('Authentication error:', error);
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-      
-      user = data.user;
-    } catch (authError) {
-      console.error('Error in authentication:', authError);
-      return res.status(401).json({ error: 'Authentication failed' });
-    }
-
-    // Configure web-push
-    webpush.setVapidDetails(
-      process.env.VAPID_SUBJECT || '',
-      process.env.VAPID_PUBLIC_KEY || '',
-      process.env.VAPID_PRIVATE_KEY || ''
-    );
+    // Initialize web-push
+    initWebPush();
 
     // Get user's subscriptions
     const subscriptions = await prisma.notificationSubscription.findMany({
@@ -57,6 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       data: {
         url: '/dashboard',
       },
+      timestamp: Date.now(),
     });
 
     // Send notification to all user's devices
@@ -66,10 +51,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Validate subscription data
           if (!subscription.endpoint || !subscription.p256dh || !subscription.auth) {
             console.error(`Invalid subscription data: ${JSON.stringify(subscription)}`);
+            
             // Delete invalid subscription
             await prisma.notificationSubscription.delete({
               where: { id: subscription.id },
             });
+            
             return { 
               success: false, 
               endpoint: subscription.endpoint || 'unknown', 
@@ -86,10 +73,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           };
           
-          // Send notification with proper error handling
+          // Send notification
           await webpush.sendNotification(pushSubscription, payload);
-          console.log(`Successfully sent notification to ${subscription.endpoint}`);
-          return { success: true, endpoint: subscription.endpoint };
+          console.log(`Successfully sent test notification to ${subscription.endpoint}`);
+          
+          return { 
+            success: true, 
+            endpoint: subscription.endpoint 
+          };
         } catch (error: any) {
           console.error(`Error sending notification to ${subscription.endpoint || 'unknown'}:`, error);
           
@@ -100,6 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
             console.log(`Deleted invalid subscription: ${subscription.endpoint || 'unknown'}`);
           }
+          
           return { 
             success: false, 
             endpoint: subscription.endpoint || 'unknown', 
@@ -120,7 +112,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
 
-    return res.status(200).json({ success: true, results });
+    // Check if any notifications were successfully sent
+    const successfulNotifications = results.filter(
+      result => result.status === 'fulfilled' && result.value.success
+    );
+
+    if (successfulNotifications.length === 0) {
+      return res.status(400).json({ 
+        error: 'Failed to send notifications to all devices',
+        results
+      });
+    }
+
+    return res.status(200).json({ 
+      success: true, 
+      sentCount: successfulNotifications.length,
+      totalCount: results.length,
+      results 
+    });
   } catch (error) {
     console.error('Error sending test notification:', error);
     return res.status(500).json({ error: 'Internal server error' });

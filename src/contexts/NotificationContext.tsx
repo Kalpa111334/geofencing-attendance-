@@ -10,7 +10,7 @@ interface NotificationContextType {
   sendTestNotification: () => Promise<void>;
 }
 
-export const NotificationContext = createContext<NotificationContextType>({
+const NotificationContext = createContext<NotificationContextType>({
   isSubscribed: false,
   isPushSupported: false,
   subscribeToNotifications: async () => {},
@@ -25,56 +25,82 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [isPushSupported, setIsPushSupported] = useState<boolean>(false);
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
-  // Check if push notifications are supported
+  // Check if push notifications are supported and register service worker
   useEffect(() => {
     const checkPushSupport = async () => {
+      if (!user) return;
+      
       try {
-        // Check if service workers are supported
+        // Check if service workers and push are supported
         if ('serviceWorker' in navigator && 'PushManager' in window) {
           setIsPushSupported(true);
           
           // Register service worker
-          const registration = await navigator.serviceWorker.register('/service-worker.js');
+          const registration = await navigator.serviceWorker.register('/service-worker.js', {
+            scope: '/'
+          });
+          
           setSwRegistration(registration);
           
           // Check if already subscribed
           const subscription = await registration.pushManager.getSubscription();
           setIsSubscribed(!!subscription);
+          
+          console.log('Service Worker registered successfully');
         } else {
           console.log('Push notifications are not supported in this browser');
           setIsPushSupported(false);
         }
       } catch (error) {
-        console.error('Error checking push support:', error);
+        console.error('Error registering service worker:', error);
         setIsPushSupported(false);
       }
     };
     
-    if (user) {
-      checkPushSupport();
-    }
+    checkPushSupport();
   }, [user]);
+
+  // Convert base64 to Uint8Array (for VAPID key)
+  const urlBase64ToUint8Array = (base64String: string) => {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding)
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+    
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    
+    return outputArray;
+  };
 
   // Subscribe to push notifications
   const subscribeToNotifications = async () => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You must be logged in to subscribe to notifications",
+      });
+      return;
+    }
+
     try {
       if (!swRegistration) {
         throw new Error('Service worker not registered');
       }
       
       // Get public key from server
-      let publicKey;
-      try {
-        const response = await fetch('/api/notifications/public-key');
-        if (!response.ok) {
-          throw new Error(`Failed to fetch public key: ${response.status} ${response.statusText}`);
-        }
-        const data = await response.json();
-        publicKey = data.publicKey;
-      } catch (error) {
-        console.error('Error fetching public key:', error);
-        throw new Error('Could not fetch public key from server');
+      const response = await fetch('/api/notifications/public-key');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch public key: ${response.status} ${response.statusText}`);
       }
+      
+      const data = await response.json();
+      const publicKey = data.publicKey;
       
       if (!publicKey) {
         throw new Error('Public key not available');
@@ -95,7 +121,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ subscription }),
+        body: JSON.stringify({ 
+          subscription: subscription.toJSON() 
+        }),
+        credentials: 'include'
       });
       
       if (!saveResponse.ok) {
@@ -120,6 +149,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   // Unsubscribe from push notifications
   const unsubscribeFromNotifications = async () => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You must be logged in to unsubscribe from notifications",
+      });
+      return;
+    }
+
     try {
       if (!swRegistration) {
         throw new Error('Service worker not registered');
@@ -132,7 +170,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       }
       
       // Unsubscribe from push manager
-      await subscription.unsubscribe();
+      const successful = await subscription.unsubscribe();
+      
+      if (!successful) {
+        throw new Error('Failed to unsubscribe from push manager');
+      }
       
       // Remove subscription from server
       const response = await fetch('/api/notifications/unsubscribe', {
@@ -141,14 +183,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          subscription: {
-            endpoint: subscription.endpoint,
-            keys: {
-              p256dh: subscription.toJSON().keys.p256dh,
-              auth: subscription.toJSON().keys.auth
-            }
-          }
+          endpoint: subscription.endpoint 
         }),
+        credentials: 'include'
       });
       
       if (!response.ok) {
@@ -173,9 +210,19 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   // Send a test notification
   const sendTestNotification = async () => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You must be logged in to send a test notification",
+      });
+      return;
+    }
+
     try {
       const response = await fetch('/api/notifications/test', {
         method: 'POST',
+        credentials: 'include'
       });
       
       if (!response.ok) {
@@ -195,23 +242,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         description: error.message || 'Failed to send test notification',
       });
     }
-  };
-
-  // Helper function to convert base64 to Uint8Array
-  const urlBase64ToUint8Array = (base64String: string) => {
-    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding)
-      .replace(/-/g, '+')
-      .replace(/_/g, '/');
-    
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    
-    return outputArray;
   };
 
   return (

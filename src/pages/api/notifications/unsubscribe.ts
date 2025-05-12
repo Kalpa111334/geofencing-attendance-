@@ -8,40 +8,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Check if cookies exist in the request
-    if (!req.cookies || Object.keys(req.cookies).length === 0) {
-      return res.status(401).json({ error: 'No authentication cookies found' });
+    // Authenticate user
+    const supabase = createClient({ req, res });
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      console.error('Authentication error:', authError);
+      return res.status(401).json({ error: 'Unauthorized' });
     }
-
-    let user;
-    try {
-      // Verify authentication
-      const supabase = createClient({ req, res });
-      const { data, error } = await supabase.auth.getUser();
-      
-      if (error || !data.user) {
-        console.error('Authentication error:', error);
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-      
-      user = data.user;
-    } catch (authError) {
-      console.error('Error in authentication:', authError);
-      return res.status(401).json({ error: 'Authentication failed' });
-    }
-    const { subscription } = req.body;
-
-    if (!subscription || !subscription.endpoint) {
-      return res.status(400).json({ error: 'Invalid subscription data' });
+    
+    // Get endpoint from request body
+    const { endpoint } = req.body;
+    
+    if (!endpoint) {
+      return res.status(400).json({ error: 'Missing subscription endpoint' });
     }
 
     // Delete subscription from database
-    await prisma.notificationSubscription.deleteMany({
+    const result = await prisma.notificationSubscription.deleteMany({
       where: {
-        endpoint: subscription.endpoint,
+        endpoint: endpoint,
         userId: user.id,
       },
     });
+
+    if (result.count === 0) {
+      return res.status(404).json({ error: 'Subscription not found' });
+    }
 
     return res.status(200).json({ success: true });
   } catch (error) {

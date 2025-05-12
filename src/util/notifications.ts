@@ -1,12 +1,16 @@
 import prisma from '@/lib/prisma';
 import webpush from 'web-push';
 
-// Configure web-push
+// Initialize web-push with VAPID keys
 export const initWebPush = () => {
+  if (!process.env.VAPID_SUBJECT || !process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+    throw new Error('VAPID environment variables are not set');
+  }
+  
   webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || '',
-    process.env.VAPID_PUBLIC_KEY || '',
-    process.env.VAPID_PRIVATE_KEY || ''
+    process.env.VAPID_SUBJECT,
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
   );
 };
 
@@ -24,13 +28,12 @@ export const sendNotificationToUser = async (
   } = {}
 ) => {
   try {
+    // Initialize web-push
     initWebPush();
 
     // Get user's subscriptions
     const subscriptions = await prisma.notificationSubscription.findMany({
-      where: {
-        userId,
-      },
+      where: { userId },
     });
 
     if (subscriptions.length === 0) {
@@ -49,6 +52,7 @@ export const sendNotificationToUser = async (
         url: options.url || '/dashboard',
         ...options.data,
       },
+      timestamp: Date.now(),
     });
 
     // Send notification to all user's devices
@@ -57,11 +61,13 @@ export const sendNotificationToUser = async (
         try {
           // Validate subscription data
           if (!subscription.endpoint || !subscription.p256dh || !subscription.auth) {
-            console.error(`Invalid subscription data: ${JSON.stringify(subscription)}`);
+            console.error(`Invalid subscription data for user ${userId}`);
+            
             // Delete invalid subscription
             await prisma.notificationSubscription.delete({
               where: { id: subscription.id },
             });
+            
             return { 
               success: false, 
               endpoint: subscription.endpoint || 'unknown', 
@@ -78,20 +84,25 @@ export const sendNotificationToUser = async (
             }
           };
           
-          // Send notification with proper error handling
+          // Send notification
           await webpush.sendNotification(pushSubscription, payload);
-          console.log(`Successfully sent notification to ${subscription.endpoint}`);
-          return { success: true, endpoint: subscription.endpoint };
+          console.log(`Successfully sent notification to ${userId} at ${subscription.endpoint}`);
+          
+          return { 
+            success: true, 
+            endpoint: subscription.endpoint 
+          };
         } catch (error: any) {
-          console.error(`Error sending notification to ${subscription.endpoint || 'unknown'}:`, error);
+          console.error(`Error sending notification to ${userId} at ${subscription.endpoint}:`, error);
           
           // If subscription is expired or invalid, remove it
           if (error.statusCode === 404 || error.statusCode === 410) {
             await prisma.notificationSubscription.delete({
               where: { id: subscription.id },
             });
-            console.log(`Deleted invalid subscription: ${subscription.endpoint || 'unknown'}`);
+            console.log(`Deleted invalid subscription for user ${userId}`);
           }
+          
           return { 
             success: false, 
             endpoint: subscription.endpoint || 'unknown', 
@@ -113,9 +124,19 @@ export const sendNotificationToUser = async (
       },
     });
 
-    return { success: true, results };
+    // Check if any notifications were successfully sent
+    const successfulNotifications = results.filter(
+      result => result.status === 'fulfilled' && result.value.success
+    );
+
+    return { 
+      success: successfulNotifications.length > 0, 
+      results,
+      sentCount: successfulNotifications.length,
+      totalCount: results.length
+    };
   } catch (error) {
-    console.error('Error sending notification:', error);
+    console.error('Error in sendNotificationToUser:', error);
     return { success: false, error };
   }
 };
@@ -136,15 +157,12 @@ export const sendNotificationToRole = async (
   try {
     // Get all users with the specified role
     const users = await prisma.user.findMany({
-      where: {
-        role,
-      },
-      select: {
-        id: true,
-      },
+      where: { role },
+      select: { id: true },
     });
 
     if (users.length === 0) {
+      console.log(`No users found with role ${role}`);
       return { success: false, error: `No users found with role ${role}` };
     }
 
@@ -153,9 +171,19 @@ export const sendNotificationToRole = async (
       users.map((user) => sendNotificationToUser(user.id, title, body, options))
     );
 
-    return { success: true, results };
+    // Count successful notifications
+    const successfulNotifications = results.filter(
+      result => result.status === 'fulfilled' && result.value.success
+    );
+
+    return { 
+      success: successfulNotifications.length > 0, 
+      results,
+      sentCount: successfulNotifications.length,
+      totalCount: users.length
+    };
   } catch (error) {
-    console.error('Error sending notification to role:', error);
+    console.error('Error in sendNotificationToRole:', error);
     return { success: false, error };
   }
 };
@@ -175,12 +203,11 @@ export const sendNotificationToAll = async (
   try {
     // Get all users
     const users = await prisma.user.findMany({
-      select: {
-        id: true,
-      },
+      select: { id: true },
     });
 
     if (users.length === 0) {
+      console.log('No users found');
       return { success: false, error: 'No users found' };
     }
 
@@ -189,9 +216,280 @@ export const sendNotificationToAll = async (
       users.map((user) => sendNotificationToUser(user.id, title, body, options))
     );
 
-    return { success: true, results };
+    // Count successful notifications
+    const successfulNotifications = results.filter(
+      result => result.status === 'fulfilled' && result.value.success
+    );
+
+    return { 
+      success: successfulNotifications.length > 0, 
+      results,
+      sentCount: successfulNotifications.length,
+      totalCount: users.length
+    };
   } catch (error) {
-    console.error('Error sending notification to all users:', error);
+    console.error('Error in sendNotificationToAll:', error);
+    return { success: false, error };
+  }
+};
+
+// Send notification for check-in events
+export const sendCheckInNotification = async (
+  userId: string,
+  locationName: string,
+  checkInTime: Date
+) => {
+  try {
+    // Get user details
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { 
+        firstName: true, 
+        lastName: true, 
+        email: true,
+        role: true
+      },
+    });
+
+    if (!user) {
+      return { success: false, error: 'User not found' };
+    }
+
+    const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+    const formattedTime = checkInTime.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+
+    // Send notification to the user who checked in
+    await sendNotificationToUser(
+      userId,
+      'Check-in Successful',
+      `You checked in at ${locationName} at ${formattedTime}`,
+      {
+        url: '/dashboard?tab=my-attendance',
+        tag: 'check-in',
+      }
+    );
+
+    // If the user is not an admin, also notify admins
+    if (user.role !== 'ADMIN') {
+      await sendNotificationToRole(
+        'ADMIN',
+        'Employee Check-in',
+        `${userName} checked in at ${locationName} at ${formattedTime}`,
+        {
+          url: '/admin-dashboard?tab=overview',
+          tag: 'employee-check-in',
+        }
+      );
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending check-in notification:', error);
+    return { success: false, error };
+  }
+};
+
+// Send notification for check-out events
+export const sendCheckOutNotification = async (
+  userId: string,
+  locationName: string,
+  checkOutTime: Date,
+  duration: number // duration in minutes
+) => {
+  try {
+    // Get user details
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { 
+        firstName: true, 
+        lastName: true, 
+        email: true,
+        role: true
+      },
+    });
+
+    if (!user) {
+      return { success: false, error: 'User not found' };
+    }
+
+    const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+    const formattedTime = checkOutTime.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    
+    // Format duration
+    const hours = Math.floor(duration / 60);
+    const minutes = duration % 60;
+    const durationText = hours > 0 
+      ? `${hours} hour${hours !== 1 ? 's' : ''} ${minutes > 0 ? `${minutes} minute${minutes !== 1 ? 's' : ''}` : ''}`
+      : `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+
+    // Send notification to the user who checked out
+    await sendNotificationToUser(
+      userId,
+      'Check-out Successful',
+      `You checked out from ${locationName} at ${formattedTime}. Total duration: ${durationText}`,
+      {
+        url: '/dashboard?tab=my-attendance',
+        tag: 'check-out',
+      }
+    );
+
+    // If the user is not an admin, also notify admins
+    if (user.role !== 'ADMIN') {
+      await sendNotificationToRole(
+        'ADMIN',
+        'Employee Check-out',
+        `${userName} checked out from ${locationName} at ${formattedTime}. Total duration: ${durationText}`,
+        {
+          url: '/admin-dashboard?tab=overview',
+          tag: 'employee-check-out',
+        }
+      );
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending check-out notification:', error);
+    return { success: false, error };
+  }
+};
+
+// Send notification for leave request submission
+export const sendLeaveRequestNotification = async (
+  leaveRequestId: string
+) => {
+  try {
+    // Get leave request details with user and leave type
+    const leaveRequest = await prisma.leaveRequest.findUnique({
+      where: { id: leaveRequestId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        leaveType: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!leaveRequest) {
+      return { success: false, error: 'Leave request not found' };
+    }
+
+    const userName = `${leaveRequest.user.firstName || ''} ${leaveRequest.user.lastName || ''}`.trim() || leaveRequest.user.email;
+    const startDate = new Date(leaveRequest.startDate).toLocaleDateString();
+    const endDate = new Date(leaveRequest.endDate).toLocaleDateString();
+    const leaveTypeName = leaveRequest.leaveType.name;
+
+    // Notify admins about the new leave request
+    await sendNotificationToRole(
+      'ADMIN',
+      'New Leave Request',
+      `${userName} has requested ${leaveRequest.totalDays} day(s) of ${leaveTypeName} leave from ${startDate} to ${endDate}`,
+      {
+        url: '/admin-dashboard?tab=leave',
+        tag: 'leave-request',
+        requireInteraction: true,
+      }
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending leave request notification:', error);
+    return { success: false, error };
+  }
+};
+
+// Send notification for leave request status update
+export const sendLeaveStatusUpdateNotification = async (
+  leaveRequestId: string
+) => {
+  try {
+    // Get leave request details with user, reviewer and leave type
+    const leaveRequest = await prisma.leaveRequest.findUnique({
+      where: { id: leaveRequestId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        reviewer: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        leaveType: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!leaveRequest) {
+      return { success: false, error: 'Leave request not found' };
+    }
+
+    const startDate = new Date(leaveRequest.startDate).toLocaleDateString();
+    const endDate = new Date(leaveRequest.endDate).toLocaleDateString();
+    const leaveTypeName = leaveRequest.leaveType.name;
+    const reviewerName = leaveRequest.reviewer 
+      ? `${leaveRequest.reviewer.firstName || ''} ${leaveRequest.reviewer.lastName || ''}`.trim() || leaveRequest.reviewer.email
+      : 'An administrator';
+
+    let title = '';
+    let body = '';
+    
+    switch (leaveRequest.status) {
+      case 'APPROVED':
+        title = 'Leave Request Approved';
+        body = `Your request for ${leaveRequest.totalDays} day(s) of ${leaveTypeName} leave from ${startDate} to ${endDate} has been approved by ${reviewerName}`;
+        break;
+      case 'REJECTED':
+        title = 'Leave Request Rejected';
+        body = `Your request for ${leaveRequest.totalDays} day(s) of ${leaveTypeName} leave from ${startDate} to ${endDate} has been rejected by ${reviewerName}${leaveRequest.rejectionReason ? `. Reason: ${leaveRequest.rejectionReason}` : ''}`;
+        break;
+      case 'CANCELLED':
+        title = 'Leave Request Cancelled';
+        body = `Your request for ${leaveRequest.totalDays} day(s) of ${leaveTypeName} leave from ${startDate} to ${endDate} has been cancelled`;
+        break;
+      default:
+        return { success: false, error: 'Invalid leave status for notification' };
+    }
+
+    // Notify the employee about their leave request status
+    await sendNotificationToUser(
+      leaveRequest.userId,
+      title,
+      body,
+      {
+        url: '/dashboard?tab=leave',
+        tag: 'leave-status',
+        requireInteraction: true,
+      }
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending leave status update notification:', error);
     return { success: false, error };
   }
 };
@@ -296,7 +594,11 @@ export const generateAndSendDailyAttendanceReport = async () => {
       },
     });
 
-    return { success: true, reportId: savedReport.id, notificationResult };
+    return { 
+      success: true, 
+      reportId: savedReport.id, 
+      notificationResult 
+    };
   } catch (error) {
     console.error('Error generating and sending daily attendance report:', error);
     return { success: false, error };
