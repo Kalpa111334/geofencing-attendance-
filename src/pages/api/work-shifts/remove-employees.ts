@@ -63,15 +63,11 @@ export default async function handler(
       });
     }
 
-    // Disconnect all employees from the work shift
-    await prisma.workShift.update({
-      where: { id: workShiftId },
-      data: {
-        employees: {
-          disconnect: workShift.employees
-        }
-      }
-    });
+    // Use raw SQL to delete the junction table entries
+    const result = await prisma.$executeRawUnsafe(
+      `DELETE FROM "_EmployeeWorkShifts" WHERE "B" = $1`,
+      workShiftId
+    );
 
     return res.status(200).json({ 
       message: 'Successfully removed all employee relationships from work shift',

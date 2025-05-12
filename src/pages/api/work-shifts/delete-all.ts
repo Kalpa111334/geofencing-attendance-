@@ -35,14 +35,9 @@ export default async function handler(
   }
 
   try {
-    // Get all work shifts with their employees and rosters
+    // Get all work shifts to count them
     const workShifts = await prisma.workShift.findMany({
-      include: {
-        employees: {
-          select: { id: true }
-        },
-        rosters: true
-      }
+      select: { id: true }
     });
 
     if (workShifts.length === 0) {
@@ -52,46 +47,25 @@ export default async function handler(
       });
     }
 
-    let deletedCount = 0;
+    // Use a transaction to ensure all operations are atomic
+    const result = await prisma.$transaction(async (tx) => {
+      // First, delete all rosters associated with any work shift
+      await tx.roster.deleteMany({});
+      
+      // Then, delete all entries in the junction table using raw SQL
+      // This bypasses the replica identity constraint
+      await tx.$executeRawUnsafe(`DELETE FROM "_EmployeeWorkShifts"`);
+      
+      // Finally, delete all work shifts
+      const deleteResult = await tx.workShift.deleteMany({});
+      
+      return deleteResult.count;
+    });
 
-    // Process each work shift individually to properly handle relationships
-    for (const workShift of workShifts) {
-      try {
-        // First, delete any associated rosters for this work shift
-        if (workShift.rosters.length > 0) {
-          await prisma.roster.deleteMany({
-            where: { workShiftId: workShift.id }
-          });
-        }
-
-        // Then, disconnect all employees from this work shift
-        if (workShift.employees.length > 0) {
-          await prisma.workShift.update({
-            where: { id: workShift.id },
-            data: {
-              employees: {
-                disconnect: workShift.employees
-              }
-            }
-          });
-        }
-        
-        // Finally, delete this work shift
-        await prisma.workShift.delete({
-          where: { id: workShift.id }
-        });
-
-        deletedCount++;
-      } catch (error) {
-        console.error(`Error deleting work shift ${workShift.id}:`, error);
-        // Continue with other work shifts even if one fails
-      }
-    }
-    
     // Return success
     return res.status(200).json({ 
-      message: `Successfully deleted ${deletedCount} work shifts`,
-      deletedCount
+      message: `Successfully deleted ${result} work shifts`,
+      deletedCount: result
     });
   } catch (error) {
     console.error('Error deleting all work shifts:', error);

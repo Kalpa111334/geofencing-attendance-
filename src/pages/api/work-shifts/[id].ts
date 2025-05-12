@@ -77,48 +77,58 @@ export default async function handler(
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
-      // First, get the current work shift to handle employee connections properly
-      const currentWorkShift = await prisma.workShift.findUnique({
+      // First, check if the work shift exists
+      const workShift = await prisma.workShift.findUnique({
         where: { id },
-        include: { 
-          employees: {
-            select: { id: true }
-          }
-        },
       });
 
-      if (!currentWorkShift) {
+      if (!workShift) {
         return res.status(404).json({ error: 'Work shift not found' });
       }
 
-      // Update the work shift
-      const updatedWorkShift = await prisma.workShift.update({
-        where: { id },
-        data: {
-          name,
-          description,
-          startTime,
-          endTime,
-          days,
-          employees: {
-            // Disconnect all existing employees
-            disconnect: currentWorkShift.employees,
-            // Connect the new set of employees
-            ...(employeeIds && Array.isArray(employeeIds) && employeeIds.length > 0
-              ? { connect: employeeIds.map((empId: string) => ({ id: empId })) }
-              : {}),
+      // Use a transaction to ensure all operations are atomic
+      const updatedWorkShift = await prisma.$transaction(async (tx) => {
+        // First, remove all employee connections using raw SQL
+        await tx.$executeRawUnsafe(`DELETE FROM "_EmployeeWorkShifts" WHERE "B" = $1`, id);
+        
+        // Then update the work shift
+        const updated = await tx.workShift.update({
+          where: { id },
+          data: {
+            name,
+            description,
+            startTime,
+            endTime,
+            days,
           },
-        },
-        include: {
-          employees: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
+        });
+        
+        // If there are employees to connect, add them
+        if (employeeIds && Array.isArray(employeeIds) && employeeIds.length > 0) {
+          // Add new employee connections
+          for (const empId of employeeIds) {
+            await tx.$executeRawUnsafe(
+              `INSERT INTO "_EmployeeWorkShifts" ("A", "B") VALUES ($1, $2)`,
+              empId,
+              id
+            );
+          }
+        }
+        
+        // Return the updated work shift with employees
+        return tx.workShift.findUnique({
+          where: { id },
+          include: {
+            employees: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
             },
           },
-        },
+        });
       });
 
       return res.status(200).json(updatedWorkShift);
@@ -134,43 +144,29 @@ export default async function handler(
   // Handle DELETE request - Delete a work shift
   if (req.method === 'DELETE') {
     try {
-      // First, check if the work shift exists
+      // Check if the work shift exists
       const workShift = await prisma.workShift.findUnique({
         where: { id },
-        include: {
-          rosters: true,
-          employees: {
-            select: { id: true }
-          }
-        }
       });
 
       if (!workShift) {
         return res.status(404).json({ error: 'Work shift not found' });
       }
 
-      // Delete any associated rosters
-      if (workShift.rosters.length > 0) {
-        await prisma.roster.deleteMany({
+      // Use a transaction to ensure all operations are atomic
+      await prisma.$transaction(async (tx) => {
+        // First, delete any associated rosters
+        await tx.roster.deleteMany({
           where: { workShiftId: id }
         });
-      }
-
-      // First, update the work shift to disconnect all employees
-      if (workShift.employees.length > 0) {
-        await prisma.workShift.update({
-          where: { id },
-          data: {
-            employees: {
-              disconnect: workShift.employees
-            }
-          }
+        
+        // Then, delete the junction table entries using raw SQL
+        await tx.$executeRawUnsafe(`DELETE FROM "_EmployeeWorkShifts" WHERE "B" = $1`, id);
+        
+        // Finally, delete the work shift
+        await tx.workShift.delete({
+          where: { id }
         });
-      }
-
-      // Now it's safe to delete the work shift
-      await prisma.workShift.delete({
-        where: { id }
       });
 
       return res.status(200).json({ message: 'Work shift deleted successfully' });
