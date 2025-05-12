@@ -6,21 +6,35 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Get the user from the request
-  const supabase = createClient(req, res);
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  // Check if cookies exist in the request
+  if (!req.cookies || Object.keys(req.cookies).length === 0) {
+    return res.status(401).json({ error: 'No authentication cookies found' });
   }
 
-  // Check if the user is an admin
-  const userData = await prisma.user.findUnique({
-    where: { id: user.id },
-  });
+  let user;
+  try {
+    // Get the user from the request
+    const supabase = createClient(req, res);
+    const { data, error } = await supabase.auth.getUser();
+    
+    if (error || !data.user) {
+      console.error('Authentication error:', error);
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    user = data.user;
+  
+    // Check if the user is an admin
+    const userData = await prisma.user.findUnique({
+      where: { id: user.id },
+    });
 
-  if (!userData || userData.role !== 'ADMIN') {
-    return res.status(403).json({ error: 'Forbidden: Admin access required' });
+    if (!userData || userData.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Forbidden: Admin access required' });
+    }
+  } catch (authError) {
+    console.error('Error in authentication:', authError);
+    return res.status(401).json({ error: 'Authentication failed' });
   }
 
   // Get the work shift ID from the request
@@ -122,7 +136,8 @@ export default async function handler(
       const workShift = await prisma.workShift.findUnique({
         where: { id },
         include: {
-          rosters: true
+          rosters: true,
+          employees: true
         }
       });
 
@@ -137,7 +152,19 @@ export default async function handler(
         });
       }
 
-      // Delete the work shift (employee relationships are handled separately)
+      // First, update the work shift to disconnect all employees
+      if (workShift.employees.length > 0) {
+        await prisma.workShift.update({
+          where: { id },
+          data: {
+            employees: {
+              disconnect: workShift.employees.map(emp => ({ id: emp.id }))
+            }
+          }
+        });
+      }
+
+      // Now it's safe to delete the work shift
       await prisma.workShift.delete({
         where: { id }
       });

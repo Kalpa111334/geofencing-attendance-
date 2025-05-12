@@ -6,21 +6,35 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Get the user from the request
-  const supabase = createClient(req, res);
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  // Check if cookies exist in the request
+  if (!req.cookies || Object.keys(req.cookies).length === 0) {
+    return res.status(401).json({ error: 'No authentication cookies found' });
   }
 
-  // Check if the user is an admin
-  const userData = await prisma.user.findUnique({
-    where: { id: user.id },
-  });
+  let user;
+  try {
+    // Get the user from the request
+    const supabase = createClient(req, res);
+    const { data, error } = await supabase.auth.getUser();
+    
+    if (error || !data.user) {
+      console.error('Authentication error:', error);
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    user = data.user;
+  
+    // Check if the user is an admin
+    const userData = await prisma.user.findUnique({
+      where: { id: user.id },
+    });
 
-  if (!userData || userData.role !== 'ADMIN') {
-    return res.status(403).json({ error: 'Forbidden: Admin access required' });
+    if (!userData || userData.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Forbidden: Admin access required' });
+    }
+  } catch (authError) {
+    console.error('Error in authentication:', authError);
+    return res.status(401).json({ error: 'Authentication failed' });
   }
 
   // Handle GET request - Get all users
