@@ -49,12 +49,23 @@ export default async function handler(
 
     // Use a transaction to ensure all operations are atomic
     const result = await prisma.$transaction(async (tx) => {
-      // First, delete all rosters associated with any work shift
-      await tx.roster.deleteMany({});
+      // First, get all work shifts
+      const shifts = await tx.workShift.findMany();
       
-      // Then, delete all entries in the junction table using raw SQL
-      // This bypasses the replica identity constraint
-      await tx.$executeRawUnsafe(`DELETE FROM "_EmployeeWorkShifts"`);
+      // For each work shift, update it to remove all employee connections
+      for (const shift of shifts) {
+        await tx.workShift.update({
+          where: { id: shift.id },
+          data: {
+            employees: {
+              set: [] // This removes all connections to employees
+            }
+          }
+        });
+      }
+      
+      // Delete all rosters associated with any work shift
+      await tx.roster.deleteMany({});
       
       // Finally, delete all work shifts
       const deleteResult = await tx.workShift.deleteMany({});
