@@ -1,5 +1,4 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@/util/supabase/api';
 import prisma from '@/lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -8,27 +7,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Authenticate user
-    const supabase = createClient({ req, res });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Get user ID and endpoint from request body
+    const { endpoint, userId } = req.body;
     
-    if (authError || !user) {
-      console.error('Authentication error:', authError);
-      return res.status(401).json({ error: 'Unauthorized' });
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
     }
-    
-    // Get endpoint from request body
-    const { endpoint } = req.body;
     
     if (!endpoint) {
       return res.status(400).json({ error: 'Missing subscription endpoint' });
+    }
+
+    // Verify user exists
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!dbUser) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
     // Delete subscription from database
     const result = await prisma.notificationSubscription.deleteMany({
       where: {
         endpoint: endpoint,
-        userId: user.id,
+        userId: userId,
       },
     });
 
@@ -39,6 +42,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error('Error unsubscribing from notifications:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
 }

@@ -1,5 +1,4 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@/util/supabase/api';
 import { initWebPush } from '@/util/notifications';
 import prisma from '@/lib/prisma';
 import webpush from 'web-push';
@@ -10,13 +9,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Authenticate user
-    const supabase = createClient({ req, res });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Get user ID from request body
+    const { userId } = req.body;
     
-    if (authError || !user) {
-      console.error('Authentication error:', authError);
-      return res.status(401).json({ error: 'Unauthorized' });
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    // Verify user exists
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!dbUser) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
     // Initialize web-push
@@ -25,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get user's subscriptions
     const subscriptions = await prisma.notificationSubscription.findMany({
       where: {
-        userId: user.id,
+        userId: userId,
       },
     });
 
@@ -108,7 +114,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         body: 'This is a test notification from your Employee Management System',
         icon: '/favicon.ico',
         url: '/dashboard',
-        userId: user.id,
+        userId: userId,
       },
     });
 
@@ -132,6 +138,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (error) {
     console.error('Error sending test notification:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
 }

@@ -1,5 +1,4 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@/util/supabase/api';
 import prisma from '@/lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -8,20 +7,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Authenticate user
-    const supabase = createClient({ req, res });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Get user ID and subscription data from request body
+    const { subscription, userId } = req.body;
     
-    if (authError || !user) {
-      console.error('Authentication error:', authError);
-      return res.status(401).json({ error: 'Unauthorized' });
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
     }
-    
-    // Get subscription data from request body
-    const { subscription } = req.body;
     
     if (!subscription || !subscription.endpoint) {
       return res.status(400).json({ error: 'Invalid subscription data' });
+    }
+
+    // Verify user exists
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!dbUser) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
     // Extract keys from subscription
@@ -37,14 +40,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         endpoint: subscription.endpoint,
       },
       update: {
-        userId: user.id,
+        userId: userId,
         p256dh: keys.p256dh,
         auth: keys.auth,
         expirationTime: subscription.expirationTime ? new Date(subscription.expirationTime) : null,
         updatedAt: new Date(),
       },
       create: {
-        userId: user.id,
+        userId: userId,
         endpoint: subscription.endpoint,
         p256dh: keys.p256dh,
         auth: keys.auth,
@@ -55,6 +58,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error('Error subscribing to notifications:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
 }

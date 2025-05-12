@@ -122,7 +122,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          subscription: subscription.toJSON() 
+          subscription: subscription.toJSON(),
+          userId: user.id
         }),
         credentials: 'include'
       });
@@ -183,7 +184,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          endpoint: subscription.endpoint 
+          endpoint: subscription.endpoint,
+          userId: user.id
         }),
         credentials: 'include'
       });
@@ -222,6 +224,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     try {
       const response = await fetch('/api/notifications/test', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: user.id }),
         credentials: 'include'
       });
       

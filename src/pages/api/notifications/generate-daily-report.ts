@@ -1,5 +1,4 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@/util/supabase/api';
 import { generateAndSendDailyAttendanceReport } from '@/util/notifications';
 import prisma from '@/lib/prisma';
 
@@ -9,22 +8,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Authenticate user
-    const supabase = createClient({ req, res });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Get user ID from request body
+    const { userId } = req.body;
     
-    if (authError || !user) {
-      console.error('Authentication error:', authError);
-      return res.status(401).json({ error: 'Unauthorized' });
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
     }
 
-    // Check if user is admin
+    // Check if user exists and is admin
     const userData = await prisma.user.findUnique({
-      where: { id: user.id },
+      where: { id: userId },
       select: { role: true }
     });
 
-    if (!userData || userData.role !== 'ADMIN') {
+    if (!userData) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (userData.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Forbidden: Admin access required' });
     }
 
@@ -42,6 +43,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (error) {
     console.error('Error generating daily report:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
 }
