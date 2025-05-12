@@ -80,6 +80,9 @@ const WorkShiftManagement: React.FC = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState<boolean>(false);
   const [selectedWorkShift, setSelectedWorkShift] = useState<WorkShift | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
+  const [deleteAllLoading, setDeleteAllLoading] = useState<boolean>(false);
+  const [submitLoading, setSubmitLoading] = useState<boolean>(false);
   
   // Form state
   const [name, setName] = useState<string>('');
@@ -141,6 +144,8 @@ const WorkShiftManagement: React.FC = () => {
   // Handle form submission for creating/editing work shift
   const handleSubmit = async () => {
     try {
+      setSubmitLoading(true);
+      
       // Validate form
       if (!name || !startTime || !endTime || selectedDays.length === 0) {
         toast({
@@ -202,6 +207,8 @@ const WorkShiftManagement: React.FC = () => {
         title: 'Error',
         description: error.message || 'Failed to save work shift',
       });
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
@@ -210,44 +217,15 @@ const WorkShiftManagement: React.FC = () => {
     if (!selectedWorkShift) return;
     
     try {
-      // First, remove all employee relationships
-      const removeEmployeesResponse = await fetch('/api/work-shifts/remove-employees', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ workShiftId: selectedWorkShift.id }),
-      });
-
-      if (!removeEmployeesResponse.ok) {
-        const errorData = await removeEmployeesResponse.json();
-        throw new Error(errorData.error || 'Failed to remove employee relationships');
-      }
-
-      // Parse the response
-      const removeEmployeesData = await removeEmployeesResponse.json();
+      setDeleteLoading(true);
       
-      // Check if we got a new work shift ID (fallback approach was used)
-      if (removeEmployeesData.newWorkShiftId) {
-        toast({
-          title: 'Success',
-          description: 'Work shift replaced successfully',
-        });
-        
-        // Close dialog and refresh data
-        setShowDeleteDialog(false);
-        setSelectedWorkShift(null);
-        fetchWorkShifts();
-        return;
-      }
-
-      // If we didn't get a new work shift ID, proceed with normal deletion
-      const deleteResponse = await fetch(`/api/work-shifts/${selectedWorkShift.id}`, {
+      // Delete the work shift
+      const response = await fetch(`/api/work-shifts/${selectedWorkShift.id}`, {
         method: 'DELETE',
       });
 
-      if (!deleteResponse.ok) {
-        const errorData = await deleteResponse.json();
+      if (!response.ok) {
+        const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to delete work shift');
       }
 
@@ -267,15 +245,22 @@ const WorkShiftManagement: React.FC = () => {
         title: 'Error',
         description: error.message || 'Failed to delete work shift',
       });
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
   // Handle delete all work shifts
   const handleDeleteAll = async () => {
     try {
+      setDeleteAllLoading(true);
+      
       // Call the delete-all API endpoint
       const response = await fetch('/api/work-shifts/delete-all', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
       if (!response.ok) {
@@ -287,7 +272,7 @@ const WorkShiftManagement: React.FC = () => {
 
       toast({
         title: 'Success',
-        description: `Successfully deleted ${data.deletedCount} work shifts`,
+        description: `Successfully deleted ${data.deletedCount || 'all'} work shifts`,
       });
 
       // Close dialog and refresh data
@@ -300,6 +285,8 @@ const WorkShiftManagement: React.FC = () => {
         title: 'Error',
         description: error.message || 'Failed to delete all work shifts',
       });
+    } finally {
+      setDeleteAllLoading(false);
     }
   };
 
@@ -580,9 +567,16 @@ const WorkShiftManagement: React.FC = () => {
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={resetForm}>Cancel</Button>
-            <Button onClick={handleSubmit}>
-              {isEditing ? 'Update Work Shift' : 'Create Work Shift'}
+            <Button variant="outline" onClick={resetForm} disabled={submitLoading}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={submitLoading}>
+              {submitLoading ? (
+                <>
+                  <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
+                  {isEditing ? 'Updating...' : 'Creating...'}
+                </>
+              ) : (
+                isEditing ? 'Update Work Shift' : 'Create Work Shift'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -615,9 +609,16 @@ const WorkShiftManagement: React.FC = () => {
           )}
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete Work Shift
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={deleteLoading}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteLoading}>
+              {deleteLoading ? (
+                <>
+                  <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Work Shift'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -648,9 +649,16 @@ const WorkShiftManagement: React.FC = () => {
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteAllDialog(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDeleteAll}>
-              Delete All Work Shifts
+            <Button variant="outline" onClick={() => setShowDeleteAllDialog(false)} disabled={deleteAllLoading}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteAll} disabled={deleteAllLoading}>
+              {deleteAllLoading ? (
+                <>
+                  <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting All...
+                </>
+              ) : (
+                'Delete All Work Shifts'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

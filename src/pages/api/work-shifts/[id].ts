@@ -6,14 +6,8 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Check if cookies exist in the request
-  if (!req.cookies || Object.keys(req.cookies).length === 0) {
-    return res.status(401).json({ error: 'No authentication cookies found' });
-  }
-
-  let user;
+  // Check authentication
   try {
-    // Get the user from the request
     const supabase = createClient(req, res);
     const { data, error } = await supabase.auth.getUser();
     
@@ -22,11 +16,9 @@ export default async function handler(
       return res.status(401).json({ error: 'Unauthorized' });
     }
     
-    user = data.user;
-  
     // Check if the user is an admin
     const userData = await prisma.user.findUnique({
-      where: { id: user.id },
+      where: { id: data.user.id },
     });
 
     if (!userData || userData.role !== 'ADMIN') {
@@ -68,7 +60,10 @@ export default async function handler(
       return res.status(200).json(workShift);
     } catch (error) {
       console.error('Error fetching work shift:', error);
-      return res.status(500).json({ error: 'Failed to fetch work shift' });
+      return res.status(500).json({ 
+        error: 'Failed to fetch work shift',
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 
@@ -85,7 +80,11 @@ export default async function handler(
       // First, get the current work shift to handle employee connections properly
       const currentWorkShift = await prisma.workShift.findUnique({
         where: { id },
-        include: { employees: true },
+        include: { 
+          employees: {
+            select: { id: true }
+          }
+        },
       });
 
       if (!currentWorkShift) {
@@ -103,7 +102,7 @@ export default async function handler(
           days,
           employees: {
             // Disconnect all existing employees
-            disconnect: currentWorkShift.employees.map(emp => ({ id: emp.id })),
+            disconnect: currentWorkShift.employees,
             // Connect the new set of employees
             ...(employeeIds && Array.isArray(employeeIds) && employeeIds.length > 0
               ? { connect: employeeIds.map((empId: string) => ({ id: empId })) }
@@ -125,7 +124,10 @@ export default async function handler(
       return res.status(200).json(updatedWorkShift);
     } catch (error) {
       console.error('Error updating work shift:', error);
-      return res.status(500).json({ error: 'Failed to update work shift' });
+      return res.status(500).json({ 
+        error: 'Failed to update work shift',
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 
@@ -137,7 +139,9 @@ export default async function handler(
         where: { id },
         include: {
           rosters: true,
-          employees: true
+          employees: {
+            select: { id: true }
+          }
         }
       });
 
@@ -158,7 +162,7 @@ export default async function handler(
           where: { id },
           data: {
             employees: {
-              disconnect: workShift.employees.map(emp => ({ id: emp.id }))
+              disconnect: workShift.employees
             }
           }
         });
@@ -172,7 +176,10 @@ export default async function handler(
       return res.status(200).json({ message: 'Work shift deleted successfully' });
     } catch (error) {
       console.error('Error deleting work shift:', error);
-      return res.status(500).json({ error: 'Failed to delete work shift' });
+      return res.status(500).json({ 
+        error: 'Failed to delete work shift',
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 

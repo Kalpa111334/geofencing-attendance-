@@ -11,14 +11,8 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Check if cookies exist in the request
-  if (!req.cookies || Object.keys(req.cookies).length === 0) {
-    return res.status(401).json({ error: 'No authentication cookies found' });
-  }
-
-  let user;
+  // Check authentication
   try {
-    // Get the user from the request
     const supabase = createClient(req, res);
     const { data, error } = await supabase.auth.getUser();
     
@@ -27,11 +21,9 @@ export default async function handler(
       return res.status(401).json({ error: 'Unauthorized' });
     }
     
-    user = data.user;
-  
     // Check if the user is an admin
     const userData = await prisma.user.findUnique({
-      where: { id: user.id },
+      where: { id: data.user.id },
     });
 
     if (!userData || userData.role !== 'ADMIN') {
@@ -52,7 +44,11 @@ export default async function handler(
     // Get the work shift with its employees
     const workShift = await prisma.workShift.findUnique({
       where: { id: workShiftId },
-      include: { employees: true }
+      include: { 
+        employees: {
+          select: { id: true }
+        }
+      }
     });
 
     if (!workShift) {
@@ -61,16 +57,18 @@ export default async function handler(
 
     // If there are no employees, nothing to do
     if (workShift.employees.length === 0) {
-      return res.status(200).json({ message: 'No employees to remove' });
+      return res.status(200).json({ 
+        message: 'No employees to remove',
+        removedCount: 0
+      });
     }
 
-    // Disconnect all employees from the work shift using Prisma's high-level API
-    // This avoids the replica identity issue with the _EmployeeWorkShifts table
+    // Disconnect all employees from the work shift
     await prisma.workShift.update({
       where: { id: workShiftId },
       data: {
         employees: {
-          disconnect: workShift.employees.map(emp => ({ id: emp.id }))
+          disconnect: workShift.employees
         }
       }
     });
@@ -81,6 +79,9 @@ export default async function handler(
     });
   } catch (error) {
     console.error('Error removing employees from work shift:', error);
-    return res.status(500).json({ error: 'Failed to remove employees from work shift' });
+    return res.status(500).json({ 
+      error: 'Failed to remove employees from work shift',
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
 }

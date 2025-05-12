@@ -6,21 +6,27 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Get the user from the request
-  const supabase = createClient(req, res);
-  const { data: { user } } = await supabase.auth.getUser();
+  // Check authentication
+  try {
+    const supabase = createClient(req, res);
+    const { data, error } = await supabase.auth.getUser();
+    
+    if (error || !data.user) {
+      console.error('Authentication error:', error);
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    // Check if the user is an admin
+    const userData = await prisma.user.findUnique({
+      where: { id: data.user.id },
+    });
 
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  // Check if the user is an admin
-  const userData = await prisma.user.findUnique({
-    where: { id: user.id },
-  });
-
-  if (!userData || userData.role !== 'ADMIN') {
-    return res.status(403).json({ error: 'Forbidden: Admin access required' });
+    if (!userData || userData.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Forbidden: Admin access required' });
+    }
+  } catch (authError) {
+    console.error('Error in authentication:', authError);
+    return res.status(401).json({ error: 'Authentication failed' });
   }
 
   // Handle GET request - Get all work shifts
@@ -43,7 +49,10 @@ export default async function handler(
       return res.status(200).json(workShifts);
     } catch (error) {
       console.error('Error fetching work shifts:', error);
-      return res.status(500).json({ error: 'Failed to fetch work shifts' });
+      return res.status(500).json({ 
+        error: 'Failed to fetch work shifts',
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 
@@ -88,7 +97,10 @@ export default async function handler(
       return res.status(201).json(workShift);
     } catch (error) {
       console.error('Error creating work shift:', error);
-      return res.status(500).json({ error: 'Failed to create work shift' });
+      return res.status(500).json({ 
+        error: 'Failed to create work shift',
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 

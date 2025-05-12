@@ -11,14 +11,8 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Check if cookies exist in the request
-  if (!req.cookies || Object.keys(req.cookies).length === 0) {
-    return res.status(401).json({ error: 'No authentication cookies found' });
-  }
-
-  let user;
+  // Check authentication
   try {
-    // Get the user from the request
     const supabase = createClient(req, res);
     const { data, error } = await supabase.auth.getUser();
     
@@ -27,11 +21,9 @@ export default async function handler(
       return res.status(401).json({ error: 'Unauthorized' });
     }
     
-    user = data.user;
-  
     // Check if the user is an admin
     const userData = await prisma.user.findUnique({
-      where: { id: user.id },
+      where: { id: data.user.id },
     });
 
     if (!userData || userData.role !== 'ADMIN') {
@@ -46,49 +38,66 @@ export default async function handler(
     // Get all work shifts with their employees and rosters
     const workShifts = await prisma.workShift.findMany({
       include: {
-        employees: true,
+        employees: {
+          select: { id: true }
+        },
         rosters: true
       }
     });
 
     if (workShifts.length === 0) {
-      return res.status(200).json({ message: 'No work shifts to delete' });
+      return res.status(200).json({ 
+        message: 'No work shifts to delete',
+        deletedCount: 0
+      });
     }
+
+    let deletedCount = 0;
 
     // Process each work shift individually to properly handle relationships
     for (const workShift of workShifts) {
-      // First, delete any associated rosters for this work shift
-      if (workShift.rosters.length > 0) {
-        await prisma.roster.deleteMany({
-          where: { workShiftId: workShift.id }
-        });
-      }
+      try {
+        // First, delete any associated rosters for this work shift
+        if (workShift.rosters.length > 0) {
+          await prisma.roster.deleteMany({
+            where: { workShiftId: workShift.id }
+          });
+        }
 
-      // Then, disconnect all employees from this work shift
-      if (workShift.employees.length > 0) {
-        await prisma.workShift.update({
-          where: { id: workShift.id },
-          data: {
-            employees: {
-              disconnect: workShift.employees.map(emp => ({ id: emp.id }))
+        // Then, disconnect all employees from this work shift
+        if (workShift.employees.length > 0) {
+          await prisma.workShift.update({
+            where: { id: workShift.id },
+            data: {
+              employees: {
+                disconnect: workShift.employees
+              }
             }
-          }
+          });
+        }
+        
+        // Finally, delete this work shift
+        await prisma.workShift.delete({
+          where: { id: workShift.id }
         });
+
+        deletedCount++;
+      } catch (error) {
+        console.error(`Error deleting work shift ${workShift.id}:`, error);
+        // Continue with other work shifts even if one fails
       }
-      
-      // Finally, delete this work shift
-      await prisma.workShift.delete({
-        where: { id: workShift.id }
-      });
     }
     
     // Return success
     return res.status(200).json({ 
-      message: 'All work shifts deleted successfully',
-      deletedCount: workShifts.length
+      message: `Successfully deleted ${deletedCount} work shifts`,
+      deletedCount
     });
   } catch (error) {
     console.error('Error deleting all work shifts:', error);
-    return res.status(500).json({ error: 'Failed to delete all work shifts' });
+    return res.status(500).json({ 
+      error: 'Failed to delete all work shifts',
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
 }
