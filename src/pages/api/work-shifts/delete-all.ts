@@ -47,31 +47,42 @@ export default async function handler(
       });
     }
 
-    // Use a transaction to ensure all operations are atomic
-    const result = await prisma.$transaction(async (tx) => {
-      // First, get all work shifts
-      const shifts = await tx.workShift.findMany();
-      
-      // For each work shift, update it to remove all employee connections
-      for (const shift of shifts) {
-        await tx.workShift.update({
+    // Delete work shifts one by one to avoid bulk operations on the junction table
+    let deletedCount = 0;
+    
+    // First, delete all rosters
+    await prisma.roster.deleteMany({});
+    
+    // Get all work shifts
+    const shifts = await prisma.workShift.findMany({
+      include: { employees: true }
+    });
+    
+    // Delete each work shift individually
+    for (const shift of shifts) {
+      // First disconnect all employees from this shift
+      if (shift.employees.length > 0) {
+        const employeeIds = shift.employees.map(emp => emp.id);
+        
+        await prisma.workShift.update({
           where: { id: shift.id },
           data: {
             employees: {
-              set: [] // This removes all connections to employees
+              disconnect: employeeIds.map(id => ({ id }))
             }
           }
         });
       }
       
-      // Delete all rosters associated with any work shift
-      await tx.roster.deleteMany({});
+      // Then delete the work shift
+      await prisma.workShift.delete({
+        where: { id: shift.id }
+      });
       
-      // Finally, delete all work shifts
-      const deleteResult = await tx.workShift.deleteMany({});
-      
-      return deleteResult.count;
-    });
+      deletedCount++;
+    }
+    
+    const result = deletedCount;
 
     // Return success
     return res.status(200).json({ 
