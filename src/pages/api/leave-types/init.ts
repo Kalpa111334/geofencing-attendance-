@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import prisma from '@/lib/prisma';
-import { createClient } from '@/util/supabase/api';
 
 // No default leave types - employees will create their own
 const defaultLeaveTypes: any[] = [];
@@ -14,19 +13,12 @@ export default async function handler(
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
 
-  // Create Supabase client with admin privileges
-  const supabase = createClient(req, res);
+  // Get the user ID from the authorization header
+  const userId = req.headers.authorization;
   
-  // Get user from session
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
+  if (!userId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-
-  const userId = session.user.id;
 
   // Get user role
   const user = await prisma.user.findUnique({

@@ -1,5 +1,4 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@/util/supabase/api';
 import prisma from '@/lib/prisma';
 import { startOfDay, endOfDay } from 'date-fns';
 
@@ -7,40 +6,25 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Check if cookies exist in the request
-  if (!req.cookies || Object.keys(req.cookies).length === 0) {
-    return res.status(401).json({ error: 'No authentication cookies found' });
-  }
-
-  let user;
-  try {
-    // Get the user from the request
-    const supabase = createClient(req, res);
-    const { data, error } = await supabase.auth.getUser();
-    
-    if (error || !data.user) {
-      console.error('Authentication error:', error);
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
-    user = data.user;
+  // Get the user ID from the authorization header
+  const userId = req.headers.authorization;
   
-    // Check if the user is an admin
-    const userData = await prisma.user.findUnique({
-      where: { id: user.id },
-    });
-
-    if (!userData || userData.role !== 'ADMIN') {
-      return res.status(403).json({ error: 'Forbidden: Admin access required' });
-    }
-  } catch (authError) {
-    console.error('Error in authentication:', authError);
-    return res.status(401).json({ error: 'Authentication failed' });
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   // Handle GET request - Get dashboard statistics
   if (req.method === 'GET') {
     try {
+      // Check if the user is an admin
+      const userData = await prisma.user.findUnique({
+        where: { id: userId as string },
+      });
+
+      if (!userData || userData.role !== 'ADMIN') {
+        return res.status(403).json({ error: 'Forbidden: Admin access required' });
+      }
+      
       // Get today's date range
       const currentDate = new Date();
       const todayStart = startOfDay(currentDate);

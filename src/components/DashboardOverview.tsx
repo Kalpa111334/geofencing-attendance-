@@ -103,10 +103,26 @@ const DashboardOverview: React.FC = () => {
   const fetchDashboardStats = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/dashboard');
+      
+      // Get the current user from Supabase
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      // Make the API request with the user ID in the authorization header
+      const response = await fetch('/api/admin/dashboard', {
+        headers: {
+          'Authorization': user.id
+        }
+      });
+      
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard statistics');
       }
+      
       const data = await response.json();
       setStats(data);
     } catch (error) {
@@ -130,8 +146,21 @@ const DashboardOverview: React.FC = () => {
   const handleInitializeLeaveTypes = async () => {
     try {
       setInitializingLeaveTypes(true);
+      
+      // Get the current user from Supabase
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
       const response = await fetch('/api/leave-types/init', {
         method: 'POST',
+        headers: {
+          'Authorization': user.id,
+          'Content-Type': 'application/json'
+        }
       });
       
       if (!response.ok) {
