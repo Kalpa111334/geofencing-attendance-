@@ -12,8 +12,11 @@ export default async function handler(
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
+    console.error('No authenticated user found');
     return res.status(401).json({ error: 'Unauthorized' });
   }
+  
+  console.log('Authenticated user:', user.id);
 
   // Check if the user is an admin for certain operations
   const userData = await prisma.user.findUnique({
@@ -70,14 +73,24 @@ export default async function handler(
       // Set end date to end of day
       parsedEndDate.setHours(23, 59, 59, 999);
 
+      console.log('Fetching attendance records for period:', {
+        startDate: parsedStartDate.toISOString(),
+        endDate: parsedEndDate.toISOString(),
+        userId: targetUserId
+      });
+
       // Build the where clause for attendance query
-      const whereClause: any = {
-        userId: targetUserId,
+      let whereClause: any = {
         checkInTime: {
           gte: parsedStartDate,
           lte: parsedEndDate,
         },
       };
+      
+      // If not an admin or a specific user ID was requested, filter by user ID
+      if (userData.role !== 'ADMIN' || userId) {
+        whereClause.userId = targetUserId;
+      }
 
       // Add location filter if provided
       if (locationId) {
@@ -101,6 +114,8 @@ export default async function handler(
         },
         orderBy: { checkInTime: 'asc' },
       });
+      
+      console.log(`Found ${attendances.length} attendance records for the report`);
 
       // Calculate attendance statistics
       const totalDays = Math.ceil((parsedEndDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -192,6 +207,7 @@ export default async function handler(
         }
       };
 
+      console.log('Successfully generated PDF data with', formattedAttendances.length, 'attendance records');
       return res.status(200).json(pdfData);
     } catch (error) {
       console.error('Error generating attendance PDF data:', error);

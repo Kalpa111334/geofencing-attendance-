@@ -144,6 +144,11 @@ const AttendanceReports: React.FC = () => {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 30);
       
+      console.log('Generating PDF report for period:', {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+      });
+      
       // Fetch the data for the report
       const response = await fetch('/api/attendance/generate-pdf', {
         method: 'POST',
@@ -155,14 +160,20 @@ const AttendanceReports: React.FC = () => {
           endDate: endDate.toISOString(),
           includeDetails: true,
         }),
+        credentials: 'include', // Include cookies for authentication
       });
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Error response from API:', errorData);
         throw new Error(errorData.error || 'Failed to generate report data');
       }
 
       const reportData = await response.json();
+      console.log('Successfully received report data:', {
+        attendancesCount: reportData.attendances?.length || 0,
+        summary: reportData.summary
+      });
       
       // Generate PDF using jsPDF and jspdf-autotable
       const generatePDF = async () => {
@@ -189,6 +200,32 @@ const AttendanceReports: React.FC = () => {
         // Add period information
         doc.setFontSize(10);
         doc.text(`Period: ${format(startDate, 'MMM d, yyyy')} - ${format(endDate, 'MMM d, yyyy')}`, 105, 22, { align: 'center' });
+        
+        // Debug the report data
+        console.log('Report data received:', reportData);
+        
+        // Check if attendances array exists and has data
+        if (!reportData.attendances || reportData.attendances.length === 0) {
+          console.error('No attendance data found in the report data');
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'No attendance data available for the selected period',
+          });
+          
+          // Add a message to the PDF
+          doc.setTextColor(0, 0, 0);
+          doc.setFontSize(12);
+          doc.text('No attendance data available for the selected period', 105, 50, { align: 'center' });
+          
+          // Generate a blob from the PDF
+          const pdfBlob = doc.output('blob');
+          const pdfUrl = URL.createObjectURL(pdfBlob);
+          window.open(pdfUrl, '_blank');
+          setPdfUrl(pdfUrl);
+          setPdfBlob(pdfBlob);
+          return;
+        }
         
         // Prepare table data with the requested structure: Employee | Location | Check In | Check Out | Duration | Status
         const tableColumn = ["Employee", "Location", "Check In", "Check Out", "Duration", "Status"];
