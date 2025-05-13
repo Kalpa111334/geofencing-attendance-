@@ -148,6 +148,7 @@ const AttendanceReports: React.FC = () => {
   // State for PDF generation
   const [generatingPDF, setGeneratingPDF] = useState<boolean>(false);
   const [pdfData, setPdfData] = useState<any>(null);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [selectedDateRange, setSelectedDateRange] = useState<{start: Date, end: Date}>({
     start: new Date(new Date().setDate(new Date().getDate() - 30)),
@@ -155,35 +156,7 @@ const AttendanceReports: React.FC = () => {
   });
   const [showPdfDialog, setShowPdfDialog] = useState<boolean>(false);
 
-  // Export attendance data as CSV
-  const exportToCSV = () => {
-    const headers = ['Employee', 'Email', 'Location', 'Check In', 'Check Out', 'Duration', 'Status'];
-    
-    const csvData = filteredAttendances.map(attendance => [
-      `${attendance.user.firstName || ''} ${attendance.user.lastName || ''}`.trim() || 'N/A',
-      attendance.user.email,
-      attendance.location.name,
-      formatDate(attendance.checkInTime),
-      attendance.checkOutTime ? formatDate(attendance.checkOutTime) : 'N/A',
-      calculateDuration(attendance.checkInTime, attendance.checkOutTime),
-      attendance.status
-    ]);
-    
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map(row => row.join(','))
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `attendance_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  // This function is no longer needed as we're replacing it with PDF export
 
   // Generate PDF data
   const generatePDFData = async () => {
@@ -223,12 +196,11 @@ const AttendanceReports: React.FC = () => {
     }
   };
 
-  // Download PDF
-  const downloadPDF = () => {
+  // Generate and open PDF in new tab
+  const generatePDF = () => {
     if (!pdfData) return;
     
     // Create a proper PDF using jsPDF
-    // First, we need to import jsPDF dynamically
     import('jspdf').then(({ default: jsPDF }) => {
       import('jspdf-autotable').then(() => {
         try {
@@ -239,31 +211,26 @@ const AttendanceReports: React.FC = () => {
             format: 'a4'
           });
           
-          // Add company header with logo placeholder
+          // Add header with icon and title
           doc.setFillColor(41, 98, 255); // Primary blue color
           doc.rect(0, 0, 210, 30, 'F');
           
-          // Add company name
+          // Add title with icon (simulated with Unicode character)
           doc.setFont('helvetica', 'bold');
-          doc.setFontSize(16);
+          doc.setFontSize(18);
           doc.setTextColor(255, 255, 255);
-          doc.text(pdfData.companyInfo?.name || 'Employee Management System', 10, 12);
-          
-          // Add report title
-          doc.setFontSize(14);
-          doc.text('ATTENDANCE REPORT', 10, 20);
+          doc.text('📊 Employee Attendance Report', 10, 15);
           
           // Add report period
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(10);
-          doc.text(`Period: ${format(parseISO(pdfData.summary.startDate), 'MMM d, yyyy')} to ${format(parseISO(pdfData.summary.endDate), 'MMM d, yyyy')}`, 10, 26);
+          doc.text(`Period: ${pdfData.summary.period}`, 10, 25);
           
-          // Add document title section
+          // Add employee information section
           doc.setDrawColor(200, 200, 200);
           doc.setFillColor(245, 245, 245);
           doc.roundedRect(10, 35, 190, 40, 3, 3, 'FD');
           
-          // Add employee information
           doc.setTextColor(0, 0, 0);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(12);
@@ -338,7 +305,7 @@ const AttendanceReports: React.FC = () => {
             pdfData.summary.performanceStatus === 'Good' ? 175 : 217,
             
             pdfData.summary.performanceStatus === 'Needs Improvement' ? 79 : 
-            pdfData.summary.performanceStatus === 'Average' ? 51 : 
+            pdfData.summary.performanceStatus === 'Average' ?  51 : 
             pdfData.summary.performanceStatus === 'Good' ? 80 : 100
           );
           doc.text(pdfData.summary.performanceStatus, 70, 112);
@@ -404,16 +371,16 @@ const AttendanceReports: React.FC = () => {
           doc.text(`${pdfData.summary.averageWorkHours} hours/day`, 170, 166);
           doc.text(pdfData.summary.punctualityStatus, 170, 173);
           
-          // Add attendance details table with the requested structure
+          // Add attendance details table with the requested structure: Employee | Location | Check In | Check Out | Duration | Status
           if (pdfData.attendances.length > 0) {
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
             doc.text('ATTENDANCE DETAILS', 15, 190);
             
-            // Prepare table data with the requested structure: Employee, Location, Check In, Check Out, Duration, Status
+            // Prepare table data with the requested structure
             const tableColumn = ["Employee", "Location", "Check In", "Check Out", "Duration", "Status"];
-            const tableRows = pdfData.attendances.map(att => [
-              att.employee || pdfData.employeeInfo.name, // Use employee name from attendance record
+            const tableRows = pdfData.attendances.map((att: any) => [
+              att.employee,
               att.location,
               att.checkIn,
               att.checkOut,
@@ -469,7 +436,7 @@ const AttendanceReports: React.FC = () => {
                   doc.setFont('helvetica', 'bold');
                   doc.setFontSize(12);
                   doc.setTextColor(255, 255, 255);
-                  doc.text('ATTENDANCE REPORT - CONTINUED', 10, 15);
+                  doc.text('📊 EMPLOYEE ATTENDANCE REPORT - CONTINUED', 10, 15);
                   
                   doc.setFont('helvetica', 'normal');
                   doc.setFontSize(8);
@@ -497,16 +464,21 @@ const AttendanceReports: React.FC = () => {
           doc.text(pdfData.companyInfo?.contact || '', 120, 283);
           doc.text(pdfData.companyInfo?.website || '', 120, 288);
           
-          // Save the PDF with a descriptive filename
-          const employeeName = pdfData.employeeInfo.name.replace(/\s+/g, '_');
-          const startDateStr = format(parseISO(pdfData.summary.startDate), 'yyyyMMdd');
-          const endDateStr = format(parseISO(pdfData.summary.endDate), 'yyyyMMdd');
+          // Generate a blob from the PDF
+          const pdfBlob = doc.output('blob');
           
-          doc.save(`Attendance_${employeeName}_${startDateStr}-${endDateStr}.pdf`);
+          // Create a URL for the blob
+          const pdfUrl = URL.createObjectURL(pdfBlob);
+          
+          // Open the PDF in a new tab
+          window.open(pdfUrl, '_blank');
+          
+          // Store the blob for potential sharing
+          setPdfBlob(pdfBlob);
           
           toast({
             title: 'Success',
-            description: 'Attendance report downloaded successfully',
+            description: 'Attendance report generated successfully',
           });
         } catch (error) {
           console.error('Error generating PDF:', error);
@@ -526,14 +498,51 @@ const AttendanceReports: React.FC = () => {
       });
     });
   };
+  
+  // Download the generated PDF
+  const downloadPDF = () => {
+    if (!pdfBlob) {
+      generatePDF();
+      return;
+    }
+    
+    // Create a download link
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement('a');
+    
+    // Set link properties
+    const employeeName = pdfData?.employeeInfo.name.replace(/\s+/g, '_') || 'employee';
+    const startDateStr = pdfData ? format(parseISO(pdfData.summary.startDate), 'yyyyMMdd') : format(new Date(), 'yyyyMMdd');
+    const endDateStr = pdfData ? format(parseISO(pdfData.summary.endDate), 'yyyyMMdd') : format(new Date(), 'yyyyMMdd');
+    
+    link.href = url;
+    link.download = `Attendance_${employeeName}_${startDateStr}-${endDateStr}.pdf`;
+    
+    // Append to the document, click, and remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: 'Success',
+      description: 'Attendance report downloaded successfully',
+    });
+  };
 
   // Share via WhatsApp
   const shareViaWhatsApp = () => {
-    if (!pdfData) return;
+    if (!pdfData) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Please generate a report first',
+      });
+      return;
+    }
     
     // Create a more visually structured and informative summary text for WhatsApp
     const summaryText = `
-📊 *${pdfData.reportTitle}* 📊
+📊 *Employee Attendance Report* 📊
 
 👤 *EMPLOYEE DETAILS*
 📝 Name: ${pdfData.employeeInfo.name}
@@ -542,7 +551,7 @@ const AttendanceReports: React.FC = () => {
 👔 Position: ${pdfData.employeeInfo.position}
 
 📈 *ATTENDANCE SUMMARY*
-📅 Period: ${format(parseISO(pdfData.summary.startDate || selectedDateRange.start.toISOString()), 'MMM d, yyyy')} to ${format(parseISO(pdfData.summary.endDate || selectedDateRange.end.toISOString()), 'MMM d, yyyy')}
+📅 Period: ${pdfData.summary.period}
 ⏱️ Total Working Days: ${pdfData.summary.totalDays}
 
 ✅ Present: ${pdfData.summary.presentDays} days
@@ -557,7 +566,7 @@ const AttendanceReports: React.FC = () => {
 ${pdfData.attendances.length > 0 ? `
 📋 *ATTENDANCE DETAILS*
 ${pdfData.attendances.slice(0, 3).map((att: any) => 
-  `👤 ${att.employee || pdfData.employeeInfo.name} | 📍 ${att.location}
+  `👤 ${att.employee} | 📍 ${att.location}
   ⏰ Check In: ${att.checkIn} | ⏱️ Check Out: ${att.checkOut}
   ⌛ Duration: ${att.duration} | ${att.status === 'PRESENT' ? '✅' : att.status === 'LATE' ? '⚠️' : '❌'} Status: ${att.status}`
 ).join('\n\n')}
@@ -627,7 +636,7 @@ ${pdfData.attendances.length > 3 ? `\n...and ${pdfData.attendances.length - 3} m
                 View and analyze employee attendance records
               </CardDescription>
             </div>
-            <div>
+            <div className="flex gap-2">
               <Button 
                 variant="default" 
                 size="sm"
@@ -640,7 +649,7 @@ ${pdfData.attendances.length > 3 ? `\n...and ${pdfData.attendances.length - 3} m
                 ) : (
                   <FaFilePdf className="mr-2 h-4 w-4" />
                 )}
-                Export PDF
+                Generate Report
               </Button>
             </div>
           </div>
@@ -956,6 +965,13 @@ ${pdfData.attendances.length > 3 ? `\n...and ${pdfData.attendances.length - 3} m
               Close
             </Button>
             <div className="flex gap-2 w-full sm:w-auto">
+              <Button 
+                onClick={generatePDF}
+                className="flex-1 sm:flex-none"
+              >
+                <FaFilePdf className="mr-2 h-4 w-4" />
+                View Report
+              </Button>
               <Button 
                 onClick={downloadPDF}
                 className="flex-1 sm:flex-none"

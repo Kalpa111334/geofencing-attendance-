@@ -129,7 +129,7 @@ export default async function handler(
 
       const averageWorkHours = daysWithCompleteRecords > 0 ? totalWorkHours / daysWithCompleteRecords : 0;
 
-      // Format attendance records for PDF with the requested structure
+      // Format attendance records for PDF with the requested structure: Employee | Location | Check In | Check Out | Duration | Status
       const formattedAttendances = attendances.map(attendance => {
         // Calculate duration
         let duration = 'N/A';
@@ -148,11 +148,10 @@ export default async function handler(
         const employeeName = `${attendance.user.firstName || ''} ${attendance.user.lastName || ''}`.trim() || attendance.user.email;
 
         return {
-          date: format(new Date(attendance.checkInTime), 'yyyy-MM-dd'),
           employee: employeeName,
           location: attendance.location.name,
-          checkIn: format(new Date(attendance.checkInTime), 'HH:mm:ss'),
-          checkOut: attendance.checkOutTime ? format(new Date(attendance.checkOutTime), 'HH:mm:ss') : 'N/A',
+          checkIn: format(new Date(attendance.checkInTime), 'MMM d, yyyy HH:mm:ss'),
+          checkOut: attendance.checkOutTime ? format(new Date(attendance.checkOutTime), 'MMM d, yyyy HH:mm:ss') : 'N/A',
           duration: duration,
           status: attendance.status,
         };
@@ -160,7 +159,7 @@ export default async function handler(
 
       // Prepare the response data
       const pdfData = {
-        reportTitle: `Attendance Report: ${format(parsedStartDate, 'MMM d, yyyy')} to ${format(parsedEndDate, 'MMM d, yyyy')}`,
+        reportTitle: `Employee Attendance Report`,
         employeeInfo: {
           name: `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim() || targetUser.email,
           email: targetUser.email,
@@ -181,6 +180,7 @@ export default async function handler(
           // Add performance indicators
           performanceStatus: attendanceRate >= 90 ? 'Excellent' : attendanceRate >= 80 ? 'Good' : attendanceRate >= 70 ? 'Average' : 'Needs Improvement',
           punctualityStatus: punctualityRate >= 90 ? 'Excellent' : punctualityRate >= 80 ? 'Good' : punctualityRate >= 70 ? 'Average' : 'Needs Improvement',
+          period: `${format(parsedStartDate, 'MMM d, yyyy')} to ${format(parsedEndDate, 'MMM d, yyyy')}`,
         },
         attendances: includeDetails ? formattedAttendances : [],
         generatedAt: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
