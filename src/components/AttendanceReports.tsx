@@ -411,8 +411,8 @@ const AttendanceReports: React.FC = () => {
   
   // Create HTML wrapper with PDF and WhatsApp share button
   const createHtmlWrapperWithPdf = (pdfUrl: string, filename: string, isEmpty: boolean) => {
-    // Create WhatsApp sharing message with filter details
-    let message = `📊 *Employee Attendance Report*\n\n`;
+    // Create WhatsApp sharing message with filter details for PDF link
+    let pdfMessage = `📊 *Employee Attendance Report*\n\n`;
     
     // Add period information
     let dateRangeText = 'Last 30 days';
@@ -426,32 +426,86 @@ const AttendanceReports: React.FC = () => {
       dateRangeText = 'This Month';
     }
     
-    message += `*Period:* ${dateRangeText}\n`;
+    pdfMessage += `*Period:* ${dateRangeText}\n`;
     
     // Add status information if filtered
     if (statusFilter !== 'ALL') {
-      message += `*Status:* ${statusFilter}\n`;
+      pdfMessage += `*Status:* ${statusFilter}\n`;
     }
     
     // Add location information if filtered
     if (locationFilter !== 'ALL') {
       const locationName = locations.find(loc => loc.id === locationFilter)?.name || 'Selected Location';
-      message += `*Location:* ${locationName}\n`;
+      pdfMessage += `*Location:* ${locationName}\n`;
     }
     
     // Add note about empty report if applicable
     if (isEmpty) {
-      message += `\n*Note:* No attendance data available for the selected period.\n`;
+      pdfMessage += `\n*Note:* No attendance data available for the selected period.\n`;
     }
     
     // Add company name
-    message += `\nGenerated from Employee Management System on ${format(new Date(), 'MMM d, yyyy h:mm a')}`;
+    pdfMessage += `\nGenerated from Employee Management System on ${format(new Date(), 'MMM d, yyyy h:mm a')}`;
     
-    // Encode the message for WhatsApp
-    const encodedMessage = encodeURIComponent(message);
+    // Create a more detailed text summary for plain text sharing
+    let textSummary = `📊 *ATTENDANCE REPORT SUMMARY*\n\n`;
     
-    // Create WhatsApp sharing URL
-    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+    // Add header with date and time
+    textSummary += `*Generated:* ${format(new Date(), 'MMM d, yyyy h:mm a')}\n\n`;
+    
+    // Add period information
+    textSummary += `*Period:* ${dateRangeText}\n`;
+    
+    // Add filter information
+    if (statusFilter !== 'ALL') {
+      textSummary += `*Status Filter:* ${statusFilter}\n`;
+    }
+    
+    if (locationFilter !== 'ALL') {
+      const locationName = locations.find(loc => loc.id === locationFilter)?.name || 'Selected Location';
+      textSummary += `*Location:* ${locationName}\n`;
+    }
+    
+    textSummary += `\n*SUMMARY STATISTICS*\n`;
+    
+    if (isEmpty) {
+      textSummary += `No attendance data available for the selected period.\n`;
+    } else {
+      // Add some statistics about the report
+      textSummary += `- Total Records: ${filteredAttendances.length}\n`;
+      
+      // Count by status
+      const presentCount = filteredAttendances.filter(a => a.status === 'PRESENT').length;
+      const lateCount = filteredAttendances.filter(a => a.status === 'LATE').length;
+      const absentCount = filteredAttendances.filter(a => a.status === 'ABSENT').length;
+      const otherCount = filteredAttendances.length - presentCount - lateCount - absentCount;
+      
+      textSummary += `- Present: ${presentCount}\n`;
+      textSummary += `- Late: ${lateCount}\n`;
+      textSummary += `- Absent: ${absentCount}\n`;
+      if (otherCount > 0) {
+        textSummary += `- Other: ${otherCount}\n`;
+      }
+      
+      // Add attendance rate
+      const attendanceRate = ((presentCount + lateCount) / filteredAttendances.length * 100).toFixed(1);
+      textSummary += `- Attendance Rate: ${attendanceRate}%\n`;
+      
+      // Add punctuality rate
+      const punctualityRate = (presentCount / (presentCount + lateCount) * 100).toFixed(1);
+      textSummary += `- Punctuality Rate: ${punctualityRate}%\n`;
+    }
+    
+    textSummary += `\n*For detailed information, please refer to the full report.*\n\n`;
+    textSummary += `Employee Management System`;
+    
+    // Encode messages for WhatsApp
+    const encodedPdfMessage = encodeURIComponent(pdfMessage);
+    const encodedTextSummary = encodeURIComponent(textSummary);
+    
+    // Create WhatsApp sharing URLs
+    const pdfWhatsappUrl = `https://wa.me/?text=${encodedPdfMessage}`;
+    const textWhatsappUrl = `https://wa.me/?text=${encodedTextSummary}`;
     
     // Create an HTML wrapper with the PDF and WhatsApp share button
     const html = `
@@ -529,6 +583,91 @@ const AttendanceReports: React.FC = () => {
             height: 100%;
             border: none;
           }
+          
+          /* Modal styles */
+          .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+          }
+          .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+          }
+          .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+          }
+          .modal-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0;
+          }
+          .close-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #666;
+          }
+          .share-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+          }
+          .share-option {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+          }
+          .share-option:hover {
+            background-color: #f5f5f5;
+          }
+          .share-option-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            border-radius: 50%;
+          }
+          .share-option-icon.pdf {
+            background-color: #f44336;
+            color: white;
+          }
+          .share-option-icon.text {
+            background-color: #4caf50;
+            color: white;
+          }
+          .share-option-content {
+            flex: 1;
+          }
+          .share-option-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+          }
+          .share-option-description {
+            font-size: 14px;
+            color: #666;
+          }
+          
           @media (max-width: 768px) {
             .title {
               font-size: 16px;
@@ -536,6 +675,13 @@ const AttendanceReports: React.FC = () => {
             .whatsapp-btn, .download-btn {
               width: 36px;
               height: 36px;
+            }
+            .modal-content {
+              width: 95%;
+              padding: 15px;
+            }
+            .share-option {
+              padding: 12px;
             }
           }
         </style>
@@ -551,13 +697,55 @@ const AttendanceReports: React.FC = () => {
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
             </button>
-            <button class="whatsapp-btn" onclick="shareOnWhatsApp()" title="Share on WhatsApp">
+            <button class="whatsapp-btn" onclick="openShareModal()" title="Share on WhatsApp">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white">
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
               </svg>
             </button>
           </div>
         </div>
+        
+        <!-- Share Modal -->
+        <div id="shareModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h2 class="modal-title">Share on WhatsApp</h2>
+              <button class="close-btn" onclick="closeShareModal()">&times;</button>
+            </div>
+            <div class="share-options">
+              <div class="share-option" onclick="shareFullPDF()">
+                <div class="share-option-icon pdf">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <line x1="10" y1="9" x2="8" y2="9"/>
+                  </svg>
+                </div>
+                <div class="share-option-content">
+                  <div class="share-option-title">Share Full Report</div>
+                  <div class="share-option-description">Share a message with a link to view or download the complete PDF report</div>
+                </div>
+              </div>
+              <div class="share-option" onclick="shareTextSummary()">
+                <div class="share-option-icon text">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <line x1="10" y1="9" x2="8" y2="9"/>
+                  </svg>
+                </div>
+                <div class="share-option-content">
+                  <div class="share-option-title">Share Text Summary</div>
+                  <div class="share-option-description">Share a plain text summary with key statistics from the report</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <div class="pdf-container">
           <iframe src="${pdfUrl}" type="application/pdf"></iframe>
         </div>
@@ -572,8 +760,30 @@ const AttendanceReports: React.FC = () => {
             document.body.removeChild(link);
           }
           
-          function shareOnWhatsApp() {
-            window.open("${whatsappUrl}", "_blank");
+          function openShareModal() {
+            document.getElementById('shareModal').style.display = 'flex';
+          }
+          
+          function closeShareModal() {
+            document.getElementById('shareModal').style.display = 'none';
+          }
+          
+          function shareFullPDF() {
+            window.open("${pdfWhatsappUrl}", "_blank");
+            closeShareModal();
+          }
+          
+          function shareTextSummary() {
+            window.open("${textWhatsappUrl}", "_blank");
+            closeShareModal();
+          }
+          
+          // Close modal when clicking outside of it
+          window.onclick = function(event) {
+            const modal = document.getElementById('shareModal');
+            if (event.target === modal) {
+              closeShareModal();
+            }
           }
         </script>
       </body>
