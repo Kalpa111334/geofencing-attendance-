@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FaBell, FaBellSlash, FaInfoCircle, FaSpinner } from 'react-icons/fa';
+import { FaBell, FaBellSlash, FaInfoCircle, FaSpinner, FaExclamationTriangle } from 'react-icons/fa';
 
 const NotificationSettings: React.FC = () => {
   const { 
@@ -18,6 +18,14 @@ const NotificationSettings: React.FC = () => {
   
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [testLoading, setTestLoading] = useState<boolean>(false);
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission | null>(null);
+
+  // Check notification permission status
+  useEffect(() => {
+    if ('Notification' in window) {
+      setPermissionStatus(Notification.permission);
+    }
+  }, [isSubscribed]);
 
   const handleToggleNotifications = async () => {
     setIsLoading(true);
@@ -25,8 +33,18 @@ const NotificationSettings: React.FC = () => {
       if (isSubscribed) {
         await unsubscribeFromNotifications();
       } else {
+        // Request permission first if needed
+        if (Notification.permission !== 'granted') {
+          const permission = await Notification.requestPermission();
+          setPermissionStatus(permission);
+          if (permission !== 'granted') {
+            throw new Error('Notification permission denied');
+          }
+        }
         await subscribeToNotifications();
       }
+    } catch (error: any) {
+      console.error('Error toggling notifications:', error);
     } finally {
       setIsLoading(false);
     }
@@ -72,6 +90,16 @@ const NotificationSettings: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {permissionStatus === 'denied' && (
+          <Alert variant="destructive">
+            <FaExclamationTriangle className="h-4 w-4" />
+            <AlertTitle>Permission Blocked</AlertTitle>
+            <AlertDescription>
+              Notifications are blocked in your browser settings. Please enable notifications for this site in your browser settings to receive notifications.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label htmlFor="notifications">Push Notifications</Label>
@@ -83,11 +111,11 @@ const NotificationSettings: React.FC = () => {
             id="notifications"
             checked={isSubscribed}
             onCheckedChange={handleToggleNotifications}
-            disabled={isLoading}
+            disabled={isLoading || permissionStatus === 'denied'}
           />
         </div>
 
-        {isSubscribed && (
+        {isSubscribed ? (
           <div className="pt-2">
             <Alert>
               <FaInfoCircle className="h-4 w-4" />
@@ -99,6 +127,16 @@ const NotificationSettings: React.FC = () => {
                   <li>Leave request submissions and approvals</li>
                   <li>Daily attendance reports</li>
                 </ul>
+              </AlertDescription>
+            </Alert>
+          </div>
+        ) : (
+          <div className="pt-2">
+            <Alert>
+              <FaInfoCircle className="h-4 w-4" />
+              <AlertTitle>Enable Notifications</AlertTitle>
+              <AlertDescription>
+                Toggle the switch above to enable notifications. You may need to allow notifications in your browser when prompted.
               </AlertDescription>
             </Alert>
           </div>

@@ -1,15 +1,21 @@
 // Service Worker for Push Notifications
 
 // Cache name for offline support
-const CACHE_NAME = 'employee-management-v1';
+const CACHE_NAME = 'employee-management-v2';
+
+// Log helper
+const logMessage = (message) => {
+  console.log(`[Service Worker] ${message}`);
+};
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-  console.log('Service Worker installing...');
+  logMessage('Installing...');
   self.skipWaiting();
   
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
+      logMessage('Caching app shell and content');
       return cache.addAll([
         '/',
         '/favicon.ico',
@@ -22,20 +28,20 @@ self.addEventListener('install', (event) => {
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating...');
+  logMessage('Activating...');
   
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('Service Worker: clearing old cache', cacheName);
+            logMessage(`Clearing old cache: ${cacheName}`);
             return caches.delete(cacheName);
           }
         })
       );
     }).then(() => {
-      console.log('Service Worker: claiming clients');
+      logMessage('Claiming clients');
       return self.clients.claim();
     })
   );
@@ -43,12 +49,12 @@ self.addEventListener('activate', (event) => {
 
 // Push event - handle incoming push notifications
 self.addEventListener('push', (event) => {
-  console.log('Service Worker: Push event received');
+  logMessage('Push event received');
   
   if (event.data) {
     try {
       const data = event.data.json();
-      console.log('Service Worker: Push data', data);
+      logMessage(`Push data received: ${JSON.stringify(data)}`);
       
       const options = {
         body: data.body || 'New notification',
@@ -63,11 +69,14 @@ self.addEventListener('push', (event) => {
         actions: data.actions || []
       };
       
+      logMessage(`Showing notification: ${data.title}`);
       event.waitUntil(
         self.registration.showNotification(data.title || 'Notification', options)
+          .then(() => logMessage('Notification shown successfully'))
+          .catch(error => logMessage(`Error showing notification: ${error}`))
       );
     } catch (error) {
-      console.error('Service Worker: Error processing push data', error);
+      logMessage(`Error processing push data: ${error}`);
       
       // Show a generic notification if JSON parsing fails
       event.waitUntil(
@@ -78,12 +87,23 @@ self.addEventListener('push', (event) => {
         })
       );
     }
+  } else {
+    logMessage('Push event received but no data');
+    
+    // Show a generic notification if no data
+    event.waitUntil(
+      self.registration.showNotification('New Notification', {
+        body: 'You have a new notification',
+        icon: '/favicon.ico',
+        data: { url: '/dashboard' }
+      })
+    );
   }
 });
 
 // Notification click event - handle notification clicks
 self.addEventListener('notificationclick', (event) => {
-  console.log('Service Worker: Notification click received');
+  logMessage(`Notification click received: ${event.notification.tag}`);
   
   // Close the notification
   event.notification.close();
@@ -91,6 +111,8 @@ self.addEventListener('notificationclick', (event) => {
   // Get the notification data
   const data = event.notification.data || {};
   const url = data.url || '/dashboard';
+  
+  logMessage(`Opening URL: ${url}`);
   
   // Handle notification click - focus or open window
   event.waitUntil(
@@ -104,14 +126,18 @@ self.addEventListener('notificationclick', (event) => {
         const clientUrl = new URL(client.url);
         const targetUrl = new URL(url, self.location.origin);
         
+        logMessage(`Checking client: ${clientUrl.pathname} vs ${targetUrl.pathname}`);
+        
         // If the pathname matches, focus that client
         if (clientUrl.pathname === targetUrl.pathname && 'focus' in client) {
+          logMessage('Focusing existing client');
           return client.focus();
         }
       }
       
       // If no window/tab is open with the URL, open a new one
       if (clients.openWindow) {
+        logMessage('Opening new window');
         return clients.openWindow(url);
       }
     })
@@ -155,4 +181,13 @@ self.addEventListener('fetch', (event) => {
         return caches.match(event.request);
       })
   );
+});
+
+// Listen for messages from clients
+self.addEventListener('message', (event) => {
+  logMessage(`Message received from client: ${JSON.stringify(event.data)}`);
+  
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });

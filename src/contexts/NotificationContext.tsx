@@ -35,18 +35,35 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         if ('serviceWorker' in navigator && 'PushManager' in window) {
           setIsPushSupported(true);
           
+          // Check if permission is already granted
+          const permission = await Notification.requestPermission();
+          console.log('Notification permission status:', permission);
+          
           // Register service worker
+          console.log('Registering service worker...');
           const registration = await navigator.serviceWorker.register('/service-worker.js', {
             scope: '/'
           });
           
+          console.log('Service Worker registered successfully:', registration);
           setSwRegistration(registration);
           
-          // Check if already subscribed
-          const subscription = await registration.pushManager.getSubscription();
-          setIsSubscribed(!!subscription);
-          
-          console.log('Service Worker registered successfully');
+          // Wait for the service worker to be ready
+          if (registration.installing) {
+            console.log('Service worker installing');
+            const installingWorker = registration.installing;
+            installingWorker.addEventListener('statechange', () => {
+              console.log('Service worker state changed to:', installingWorker.state);
+              if (installingWorker.state === 'activated') {
+                checkSubscription(registration);
+              }
+            });
+          } else if (registration.waiting) {
+            console.log('Service worker waiting');
+          } else if (registration.active) {
+            console.log('Service worker active');
+            checkSubscription(registration);
+          }
         } else {
           console.log('Push notifications are not supported in this browser');
           setIsPushSupported(false);
@@ -54,6 +71,17 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       } catch (error) {
         console.error('Error registering service worker:', error);
         setIsPushSupported(false);
+      }
+    };
+    
+    const checkSubscription = async (registration: ServiceWorkerRegistration) => {
+      try {
+        console.log('Checking for existing subscription...');
+        const subscription = await registration.pushManager.getSubscription();
+        console.log('Existing subscription:', subscription);
+        setIsSubscribed(!!subscription);
+      } catch (error) {
+        console.error('Error checking subscription:', error);
       }
     };
     

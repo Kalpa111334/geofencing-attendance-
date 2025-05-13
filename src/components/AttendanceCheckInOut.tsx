@@ -133,10 +133,25 @@ const AttendanceCheckInOut: React.FC = () => {
   const fetchAttendance = async () => {
     try {
       setAttendanceLoading(true);
-      const response = await fetch('/api/attendance');
+      
+      // Get the current user from Supabase
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      const response = await fetch('/api/attendance', {
+        headers: {
+          'Authorization': user.id
+        }
+      });
+      
       if (!response.ok) {
         throw new Error('Failed to fetch attendance records');
       }
+      
       const data = await response.json();
       
       // Find current (open) attendance record
@@ -196,11 +211,20 @@ const AttendanceCheckInOut: React.FC = () => {
         throw geoError;
       }
       
+      // Get the current user from Supabase
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
       // Send check-in request
       const response = await fetch('/api/attendance', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': user.id
         },
         body: JSON.stringify({
           locationId: selectedLocationId,
@@ -280,11 +304,20 @@ const AttendanceCheckInOut: React.FC = () => {
         throw geoError;
       }
       
+      // Get the current user from Supabase
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
       // Send check-out request
       const response = await fetch('/api/attendance', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': user.id
         },
         body: JSON.stringify({
           locationId: currentAttendance.locationId,

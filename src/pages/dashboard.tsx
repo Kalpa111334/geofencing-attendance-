@@ -19,7 +19,13 @@ export default function Dashboard() {
     const fetchUserData = async () => {
       if (user) {
         try {
-          const response = await fetch(`/api/user`);
+          // Include user ID in authorization header
+          const response = await fetch(`/api/user`, {
+            headers: {
+              'Authorization': user.id
+            }
+          });
+          
           if (response.ok) {
             const userData = await response.json();
             
