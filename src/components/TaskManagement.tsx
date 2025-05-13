@@ -80,8 +80,8 @@ export default function TaskManagement() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedEmployee, setSelectedEmployee] = useState<string>('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [selectedEmployee, setSelectedEmployee] = useState<string>('ALL_EMPLOYEES');
+  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
@@ -106,8 +106,8 @@ export default function TaskManagement() {
   const [rejectionReason, setRejectionReason] = useState('');
   
   // Report states
-  const [reportEmployeeId, setReportEmployeeId] = useState('');
-  const [reportStatus, setReportStatus] = useState('');
+  const [reportEmployeeId, setReportEmployeeId] = useState('ALL_EMPLOYEES');
+  const [reportStatus, setReportStatus] = useState('ALL');
   const [reportStartDate, setReportStartDate] = useState<Date | undefined>(
     new Date(new Date().setDate(new Date().getDate() - 30))
   );
@@ -202,13 +202,15 @@ export default function TaskManagement() {
   const handleFilterChange = () => {
     // If status is "ALL", pass undefined to fetch all statuses
     const statusFilter = selectedStatus === "ALL" ? undefined : selectedStatus;
-    fetchTasks(selectedEmployee || undefined, statusFilter);
+    // If employee is "ALL_EMPLOYEES", pass undefined to fetch all employees
+    const employeeFilter = selectedEmployee === "ALL_EMPLOYEES" ? undefined : selectedEmployee;
+    fetchTasks(employeeFilter, statusFilter);
   };
 
   // Reset filters
   const resetFilters = () => {
-    setSelectedEmployee('');
-    setSelectedStatus('');
+    setSelectedEmployee('ALL_EMPLOYEES');
+    setSelectedStatus('ALL');
     fetchTasks();
   };
 
@@ -386,8 +388,8 @@ export default function TaskManagement() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          employeeId: reportEmployeeId || undefined,
-          status: reportStatus || undefined,
+          employeeId: reportEmployeeId === "ALL_EMPLOYEES" ? undefined : reportEmployeeId || undefined,
+          status: reportStatus === "ALL" ? undefined : reportStatus || undefined,
           startDate: reportStartDate?.toISOString(),
           endDate: reportEndDate?.toISOString(),
         }),
@@ -437,7 +439,7 @@ export default function TaskManagement() {
   const createHtmlWrapperWithPdf = (pdfUrl: string, reportOptions: any) => {
     // Get employee name if employeeId is provided
     let employeeName = 'All Employees';
-    if (reportOptions.employeeId) {
+    if (reportOptions.employeeId && reportOptions.employeeId !== 'ALL_EMPLOYEES') {
       const employee = employees.find(e => e.id === reportOptions.employeeId);
       if (employee) {
         employeeName = `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.email;
@@ -450,7 +452,7 @@ export default function TaskManagement() {
       : 'All time';
     
     // Format status
-    const statusText = reportOptions.status ? reportOptions.status : 'All statuses';
+    const statusText = reportOptions.status === 'ALL' || !reportOptions.status ? 'All statuses' : reportOptions.status;
     
     // Create a summary text for WhatsApp sharing
     const summaryText = encodeURIComponent(
@@ -793,7 +795,7 @@ export default function TaskManagement() {
                   <SelectValue placeholder="All Employees" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Employees</SelectItem>
+                  <SelectItem value="ALL_EMPLOYEES">All Employees</SelectItem>
                   {employees.map((employee) => (
                     <SelectItem key={employee.id} value={employee.id}>
                       {employee.firstName} {employee.lastName} ({employee.email})
@@ -1141,7 +1143,7 @@ export default function TaskManagement() {
                   <SelectValue placeholder="All Employees" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Employees</SelectItem>
+                  <SelectItem value="ALL_EMPLOYEES">All Employees</SelectItem>
                   {employees.map((employee) => (
                     <SelectItem key={employee.id} value={employee.id}>
                       {employee.firstName} {employee.lastName} ({employee.email})
@@ -1157,7 +1159,7 @@ export default function TaskManagement() {
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="ALL">All Statuses</SelectItem>
                   <SelectItem value="ASSIGNED">Assigned</SelectItem>
                   <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
                   <SelectItem value="COMPLETED">Completed</SelectItem>
