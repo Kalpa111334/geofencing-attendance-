@@ -213,170 +213,28 @@ const AttendanceReports: React.FC = () => {
           
           // Add header with icon and title
           doc.setFillColor(41, 98, 255); // Primary blue color
-          doc.rect(0, 0, 210, 30, 'F');
+          doc.rect(0, 0, 30, 30, 'F');
           
-          // Add title with icon (simulated with Unicode character)
+          // Add title with icon (using Unicode character)
           doc.setFont('helvetica', 'bold');
-          doc.setFontSize(18);
+          doc.setFontSize(20);
           doc.setTextColor(255, 255, 255);
-          doc.text('📊 Employee Attendance Report', 10, 15);
+          doc.text('📊', 15, 15, { align: 'center' });
+          
+          // Add title text
+          doc.setFillColor(240, 240, 240);
+          doc.rect(30, 0, 180, 30, 'F');
+          doc.setTextColor(41, 98, 255);
+          doc.text('Employee Attendance Report', 105, 15, { align: 'center' });
           
           // Add report period
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(10);
-          doc.text(`Period: ${pdfData.summary.period}`, 10, 25);
+          doc.setTextColor(100, 100, 100);
+          doc.text(`Period: ${pdfData.summary.period}`, 105, 22, { align: 'center' });
           
-          // Add employee information section
-          doc.setDrawColor(200, 200, 200);
-          doc.setFillColor(245, 245, 245);
-          doc.roundedRect(10, 35, 190, 40, 3, 3, 'FD');
-          
-          doc.setTextColor(0, 0, 0);
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(12);
-          doc.text('EMPLOYEE INFORMATION', 15, 43);
-          
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(10);
-          
-          // Left column
-          doc.text('Name:', 15, 50);
-          doc.text('Department:', 15, 56);
-          doc.text('Position:', 15, 62);
-          doc.text('User ID:', 15, 68);
-          
-          // Right column - values
-          doc.setFont('helvetica', 'bold');
-          doc.text(pdfData.employeeInfo.name, 45, 50);
-          doc.text(pdfData.employeeInfo.department, 45, 56);
-          doc.text(pdfData.employeeInfo.position, 45, 62);
-          doc.text(pdfData.employeeInfo.employeeId || 'N/A', 45, 68);
-          
-          // Email on right side
-          doc.setFont('helvetica', 'normal');
-          doc.text('Email:', 110, 50);
-          doc.setFont('helvetica', 'bold');
-          doc.text(pdfData.employeeInfo.email, 130, 50);
-          
-          // Add attendance summary section
-          doc.setFillColor(245, 245, 245);
-          doc.roundedRect(10, 80, 190, 65, 3, 3, 'FD');
-          
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(12);
-          doc.text('ATTENDANCE SUMMARY', 15, 88);
-          
-          // Create a visual attendance rate indicator with label
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(10);
-          doc.text('Attendance Rate:', 15, 96);
-          
-          const attendanceRate = parseFloat(pdfData.summary.attendanceRate);
-          
-          // Draw attendance rate progress bar
-          doc.setFillColor(230, 230, 230); // Background gray
-          doc.roundedRect(15, 98, 100, 8, 1, 1, 'F');
-          
-          // Set color based on rate
-          const rateColor = 
-            attendanceRate < 70 ? [255, 77, 79] :  // Red
-            attendanceRate < 80 ? [255, 173, 51] : // Orange
-            attendanceRate < 90 ? [255, 236, 61] : // Yellow
-            [76, 217, 100];                        // Green
-          
-          doc.setFillColor(rateColor[0], rateColor[1], rateColor[2]);
-          doc.roundedRect(15, 98, Math.min(attendanceRate, 100), 8, 1, 1, 'F');
-          
-          // Add percentage text
-          doc.setFont('helvetica', 'bold');
-          doc.text(`${pdfData.summary.attendanceRate}%`, 120, 103);
-          
-          // Add performance status
-          doc.setFont('helvetica', 'normal');
-          doc.text('Performance Status:', 15, 112);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(
-            pdfData.summary.performanceStatus === 'Needs Improvement' ? 255 : 
-            pdfData.summary.performanceStatus === 'Average' ? 255 : 
-            pdfData.summary.performanceStatus === 'Good' ? 76 : 76,
-            
-            pdfData.summary.performanceStatus === 'Needs Improvement' ? 77 : 
-            pdfData.summary.performanceStatus === 'Average' ? 173 : 
-            pdfData.summary.performanceStatus === 'Good' ? 175 : 217,
-            
-            pdfData.summary.performanceStatus === 'Needs Improvement' ? 79 : 
-            pdfData.summary.performanceStatus === 'Average' ?  51 : 
-            pdfData.summary.performanceStatus === 'Good' ? 80 : 100
-          );
-          doc.text(pdfData.summary.performanceStatus, 70, 112);
-          doc.setTextColor(0, 0, 0);
-          
-          // Add key metrics in a visually appealing format with boxes
-          // Present days
-          doc.setFillColor(235, 247, 235);
-          doc.roundedRect(15, 118, 55, 22, 2, 2, 'F');
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(14);
-          doc.text(`${pdfData.summary.presentDays}`, 42, 128);
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(9);
-          doc.text('Present Days', 30, 136);
-          
-          // Late days
-          doc.setFillColor(255, 248, 227);
-          doc.roundedRect(75, 118, 55, 22, 2, 2, 'F');
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(14);
-          doc.text(`${pdfData.summary.lateDays}`, 102, 128);
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(9);
-          doc.text('Late Days', 92, 136);
-          
-          // Absent days
-          doc.setFillColor(255, 235, 235);
-          doc.roundedRect(135, 118, 55, 22, 2, 2, 'F');
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(14);
-          doc.text(`${pdfData.summary.absentDays}`, 162, 128);
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(9);
-          doc.text('Absent Days', 150, 136);
-          
-          // Add additional metrics section
-          doc.setFillColor(245, 245, 245);
-          doc.roundedRect(10, 150, 190, 30, 3, 3, 'FD');
-          
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(12);
-          doc.text('ADDITIONAL METRICS', 15, 158);
-          
-          // Add metrics in two columns
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(10);
-          
-          // Left column
-          doc.text('Total Working Days:', 15, 166);
-          doc.text('Punctuality Rate:', 15, 173);
-          
-          // Right column
-          doc.text('Average Work Hours:', 110, 166);
-          doc.text('Punctuality Status:', 110, 173);
-          
-          // Values - left column
-          doc.setFont('helvetica', 'bold');
-          doc.text(`${pdfData.summary.totalDays} days`, 70, 166);
-          doc.text(`${pdfData.summary.punctualityRate}%`, 70, 173);
-          
-          // Values - right column
-          doc.text(`${pdfData.summary.averageWorkHours} hours/day`, 170, 166);
-          doc.text(pdfData.summary.punctualityStatus, 170, 173);
-          
-          // Add attendance details table with the requested structure: Employee | Location | Check In | Check Out | Duration | Status
+          // Add the table with the requested structure
           if (pdfData.attendances.length > 0) {
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(12);
-            doc.text('ATTENDANCE DETAILS', 15, 190);
-            
             // Prepare table data with the requested structure
             const tableColumn = ["Employee", "Location", "Check In", "Check Out", "Duration", "Status"];
             const tableRows = pdfData.attendances.map((att: any) => [
@@ -392,9 +250,9 @@ const AttendanceReports: React.FC = () => {
             (doc as any).autoTable({
               head: [tableColumn],
               body: tableRows,
-              startY: 195,
+              startY: 40,
               theme: 'grid',
-              styles: { fontSize: 9, cellPadding: 3 },
+              styles: { fontSize: 10, cellPadding: 5 },
               headStyles: { 
                 fillColor: [41, 98, 255], 
                 textColor: [255, 255, 255],
@@ -403,8 +261,8 @@ const AttendanceReports: React.FC = () => {
               columnStyles: {
                 0: { cellWidth: 35 }, // Employee
                 1: { cellWidth: 30 }, // Location
-                2: { cellWidth: 30 }, // Check In
-                3: { cellWidth: 30 }, // Check Out
+                2: { cellWidth: 35 }, // Check In
+                3: { cellWidth: 35 }, // Check Out
                 4: { cellWidth: 25 }, // Duration
                 5: { // Status column
                   cellWidth: 25,
@@ -430,39 +288,47 @@ const AttendanceReports: React.FC = () => {
                 
                 // Add header to each page
                 if (data.pageNumber > 1) {
-                  doc.setFillColor(41, 98, 255);
-                  doc.rect(0, 0, 210, 20, 'F');
+                  // Add header with icon and title
+                  doc.setFillColor(41, 98, 255); // Primary blue color
+                  doc.rect(0, 0, 30, 30, 'F');
                   
+                  // Add title with icon (using Unicode character)
                   doc.setFont('helvetica', 'bold');
-                  doc.setFontSize(12);
+                  doc.setFontSize(20);
                   doc.setTextColor(255, 255, 255);
-                  doc.text('📊 EMPLOYEE ATTENDANCE REPORT - CONTINUED', 10, 15);
+                  doc.text('📊', 15, 15, { align: 'center' });
                   
+                  // Add title text
+                  doc.setFillColor(240, 240, 240);
+                  doc.rect(30, 0, 180, 30, 'F');
+                  doc.setTextColor(41, 98, 255);
+                  doc.text('Employee Attendance Report', 105, 15, { align: 'center' });
+                  
+                  // Add report period
                   doc.setFont('helvetica', 'normal');
-                  doc.setFontSize(8);
-                  doc.text(`Employee: ${pdfData.employeeInfo.name}`, 150, 15);
+                  doc.setFontSize(10);
+                  doc.setTextColor(100, 100, 100);
+                  doc.text(`Period: ${pdfData.summary.period}`, 105, 22, { align: 'center' });
                 }
               }
             });
+          } else {
+            // If no attendance records, show a message
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(12);
+            doc.text('No attendance records found for the selected period.', 105, 50, { align: 'center' });
           }
           
           // Add footer
-          const finalY = (doc as any).lastAutoTable?.finalY || 200;
-          
-          // Add a footer section
-          doc.setFillColor(245, 245, 245);
+          doc.setFillColor(240, 240, 240);
           doc.rect(0, 277, 210, 20, 'F');
           
           doc.setFont('helvetica', 'italic');
           doc.setFontSize(8);
-          doc.setTextColor(0, 0, 0);
+          doc.setTextColor(100, 100, 100);
           doc.text(`Generated at: ${pdfData.generatedAt}`, 10, 283);
           doc.text(`Generated by: ${pdfData.generatedBy}`, 10, 288);
-          
-          // Add company info in footer
-          doc.setFont('helvetica', 'normal');
-          doc.text(pdfData.companyInfo?.contact || '', 120, 283);
-          doc.text(pdfData.companyInfo?.website || '', 120, 288);
           
           // Generate a blob from the PDF
           const pdfBlob = doc.output('blob');
