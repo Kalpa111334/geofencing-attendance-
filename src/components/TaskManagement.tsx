@@ -200,7 +200,9 @@ export default function TaskManagement() {
 
   // Handle filter changes
   const handleFilterChange = () => {
-    fetchTasks(selectedEmployee || undefined, selectedStatus || undefined);
+    // If status is "ALL", pass undefined to fetch all statuses
+    const statusFilter = selectedStatus === "ALL" ? undefined : selectedStatus;
+    fetchTasks(selectedEmployee || undefined, statusFilter);
   };
 
   // Reset filters
@@ -807,7 +809,7 @@ export default function TaskManagement() {
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="ALL">All Statuses</SelectItem>
                   <SelectItem value="ASSIGNED">Assigned</SelectItem>
                   <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
                   <SelectItem value="COMPLETED">Completed</SelectItem>

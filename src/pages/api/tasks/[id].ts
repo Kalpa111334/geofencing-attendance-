@@ -3,8 +3,11 @@ import prisma from '@/lib/prisma';
 import { createClient } from '@/util/supabase/api';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Create Supabase client and get user
-  const { supabase, user } = await createClient(req, res);
+  // Create Supabase client
+  const supabase = createClient(req, res);
+  
+  // Get the user from the session
+  const { data: { user } } = await supabase.auth.getUser();
   
   if (!user) {
     return res.status(401).json({ error: 'Unauthorized' });
