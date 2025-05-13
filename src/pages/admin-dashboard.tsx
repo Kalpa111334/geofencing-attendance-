@@ -110,7 +110,7 @@ export default function AdminDashboard() {
 
           <Tabs defaultValue="overview" className="space-y-4">
             <div className="overflow-x-auto pb-2">
-              <TabsList className="inline-flex min-w-full md:grid md:grid-cols-10 md:w-auto">
+              <TabsList className="inline-flex min-w-full md:grid md:grid-cols-10 md:w-auto admin-tabs-list mobile-scrollable tabs-list">
                 <TabsTrigger value="overview" className="whitespace-nowrap">
                   <FaTachometerAlt className="mr-2 h-4 w-4" />
                   <span className="sm:inline">Overview</span>
@@ -198,7 +198,7 @@ export default function AdminDashboard() {
         
         {/* Mobile Bottom Navigation */}
         <div className="fixed bottom-0 left-0 right-0 bg-background border-t sm:hidden z-10 mobile-bottom-nav">
-          <div className="grid grid-cols-5 h-16 mobile-no-select">
+          <div className="grid grid-cols-5 h-16 mobile-no-select mobile-safe-bottom">
             <Button 
               variant="ghost" 
               className="flex flex-col items-center justify-center h-full w-full rounded-none mobile-touch-feedback haptic-feedback"
@@ -247,7 +247,7 @@ export default function AdminDashboard() {
           </div>
           
           {/* More Menu */}
-          <div id="more-menu" className="hidden absolute bottom-16 left-0 right-0 bg-background border-t shadow-lg">
+          <div id="more-menu" className="hidden absolute bottom-16 left-0 right-0 bg-background border-t shadow-lg mobile-safe-bottom">
             <div className="grid grid-cols-4 gap-1 p-2">
               <Button 
                 variant="ghost" 

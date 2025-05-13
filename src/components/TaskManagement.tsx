@@ -830,7 +830,7 @@ export default function TaskManagement() {
       </div>
 
       {/* Task Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 task-stats-grid">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
@@ -888,7 +888,7 @@ export default function TaskManagement() {
           <CardDescription>Filter tasks by employee and status</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col md:flex-row gap-4 filter-section">
             <div className="flex-1">
               <Label htmlFor="employee-filter">Employee</Label>
               <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
@@ -996,7 +996,7 @@ export default function TaskManagement() {
 
       {/* Create Task Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] dialog-content">
           <DialogHeader>
             <DialogTitle>Create New Task</DialogTitle>
             <DialogDescription>
@@ -1108,7 +1108,7 @@ export default function TaskManagement() {
       {/* View Task Dialog */}
       {currentTask && (
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] dialog-content">
             <DialogHeader>
               <DialogTitle>{currentTask.title}</DialogTitle>
               <DialogDescription>
@@ -1177,7 +1177,7 @@ export default function TaskManagement() {
       {/* Review Task Dialog */}
       {currentTask && (
         <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] dialog-content">
             <DialogHeader>
               <DialogTitle>Review Task</DialogTitle>
               <DialogDescription>

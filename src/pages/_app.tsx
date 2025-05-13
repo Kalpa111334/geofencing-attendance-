@@ -2,6 +2,7 @@ import type { AppProps } from 'next/app'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { NotificationProvider } from '@/contexts/NotificationContext'
 import '../styles/globals.css';
+import '../styles/mobile-enhancements.css';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Toaster } from "@/components/ui/toaster"
 import { useEffect, useState } from 'react';

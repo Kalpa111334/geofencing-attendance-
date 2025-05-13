@@ -526,7 +526,7 @@ export default function EmployeeTaskDashboard() {
       </div>
 
       {/* Task Statistics */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 task-stats-grid">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
@@ -587,7 +587,7 @@ export default function EmployeeTaskDashboard() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="all" value={selectedTab} onValueChange={setSelectedTab}>
-            <TabsList className="grid grid-cols-3 md:grid-cols-6 mb-4">
+            <TabsList className="grid grid-cols-3 md:grid-cols-6 mb-4 tabs-list mobile-scrollable">
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="assigned">Assigned</TabsTrigger>
               <TabsTrigger value="in-progress">In Progress</TabsTrigger>
@@ -645,11 +645,11 @@ export default function EmployeeTaskDashboard() {
                           </div>
                         </div>
                       </CardContent>
-                      <CardFooter className="flex justify-between pt-0">
-                        <Button variant="outline" onClick={() => viewTask(task.id)}>
+                      <CardFooter className="flex flex-col sm:flex-row justify-between pt-0 gap-2 task-card-footer">
+                        <Button variant="outline" onClick={() => viewTask(task.id)} className="w-full sm:w-auto">
                           View Details
                         </Button>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto task-card-actions">
                           {task.status === 'ASSIGNED' && (
                             <Button onClick={() => startTask(task.id)}>
                               <PlayIcon className="mr-2 h-4 w-4" />
@@ -680,7 +680,7 @@ export default function EmployeeTaskDashboard() {
       {/* View Task Dialog */}
       {currentTask && (
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] dialog-content">
             <DialogHeader>
               <DialogTitle>{currentTask.title}</DialogTitle>
               <DialogDescription>
@@ -744,11 +744,11 @@ export default function EmployeeTaskDashboard() {
                 </div>
               )}
             </div>
-            <DialogFooter className="flex justify-between">
-              <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
+            <DialogFooter className="flex flex-col sm:flex-row justify-between gap-2 dialog-footer">
+              <Button variant="outline" onClick={() => setIsViewDialogOpen(false)} className="w-full sm:w-auto">
                 Close
               </Button>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 {currentTask.status === 'ASSIGNED' && (
                   <Button onClick={() => {
                     setIsViewDialogOpen(false);
@@ -786,7 +786,7 @@ export default function EmployeeTaskDashboard() {
           if (!open) stopCamera();
           setIsUploadDialogOpen(open);
         }}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] dialog-content">
             <DialogHeader>
               <DialogTitle>Upload Proof of Completion</DialogTitle>
               <DialogDescription>
@@ -799,7 +799,7 @@ export default function EmployeeTaskDashboard() {
                 <p>{currentTask.title}</p>
               </div>
               
-              <div className="relative aspect-video bg-black rounded-md overflow-hidden">
+              <div className="relative aspect-video bg-black rounded-md overflow-hidden camera-container">
                 {isCapturing && !capturedImage && (
                   <>
                     <video 
@@ -845,7 +845,7 @@ export default function EmployeeTaskDashboard() {
                 <canvas ref={canvasRef} className="hidden" />
               </div>
               
-              <div className="flex justify-center gap-4">
+              <div className="flex flex-col sm:flex-row justify-center gap-4 camera-controls">
                 {capturedImage && (
                   <>
                     <Button variant="outline" onClick={retakePhoto}>
@@ -865,7 +865,7 @@ export default function EmployeeTaskDashboard() {
                 )}
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="dialog-footer">
               <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)}>
                 Cancel
               </Button>
@@ -877,7 +877,7 @@ export default function EmployeeTaskDashboard() {
       {/* Chat Dialog */}
       {currentTask && (
         <Dialog open={isChatDialogOpen} onOpenChange={setIsChatDialogOpen}>
-          <DialogContent className="sm:max-w-[600px] h-[80vh] flex flex-col">
+          <DialogContent className="sm:max-w-[600px] h-[80vh] flex flex-col dialog-content chat-container">
             <DialogHeader>
               <DialogTitle>Task Chat</DialogTitle>
               <DialogDescription>
@@ -892,7 +892,7 @@ export default function EmployeeTaskDashboard() {
                 </p>
               </div>
               
-              <ScrollArea className="flex-1 pr-4" ref={chatScrollRef}>
+              <ScrollArea className="flex-1 pr-4 chat-messages" ref={chatScrollRef}>
                 <div className="space-y-4">
                   {messages.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">
@@ -933,7 +933,7 @@ export default function EmployeeTaskDashboard() {
                 </div>
               </ScrollArea>
             </div>
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex gap-2 chat-input-container">
               <Input
                 placeholder="Type your message..."
                 value={newMessage}

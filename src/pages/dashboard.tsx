@@ -89,7 +89,7 @@ export default function Dashboard() {
 
           <Tabs defaultValue="attendance" className="space-y-4">
             <div className="overflow-x-auto pb-2">
-              <TabsList className="inline-flex w-full">
+              <TabsList className="inline-flex w-full tabs-list mobile-scrollable">
                 <TabsTrigger value="attendance" className="flex-1 whitespace-nowrap">
                   <FaUserClock className="mr-2 h-4 w-4" />
                   <span>Attendance</span>
@@ -129,7 +129,7 @@ export default function Dashboard() {
         
         {/* Mobile Bottom Navigation */}
         <div className="fixed bottom-0 left-0 right-0 bg-background border-t sm:hidden z-10 mobile-bottom-nav">
-          <div className="grid grid-cols-4 h-16 mobile-no-select">
+          <div className="grid grid-cols-4 h-16 mobile-no-select mobile-safe-bottom">
             <Button 
               variant="ghost" 
               className="flex flex-col items-center justify-center h-full w-full rounded-none mobile-touch-feedback haptic-feedback"
