@@ -18,27 +18,15 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
 import { 
   FaSpinner, 
-  FaCalendarAlt, 
-  FaDownload, 
-  FaFilter, 
   FaSearch,
   FaUserClock,
   FaMapMarkerAlt,
-  FaCheck,
-  FaTimes,
   FaFilePdf,
   FaWhatsapp,
-  FaShareAlt
+  FaDownload,
+  FaCalendarAlt
 } from 'react-icons/fa';
 import { format, parseISO, isToday, isYesterday, isThisWeek, isThisMonth } from 'date-fns';
 
@@ -75,6 +63,7 @@ const AttendanceReports: React.FC = () => {
   const [dateFilter, setDateFilter] = useState<string>('all');
   const [locationFilter, setLocationFilter] = useState<string>('ALL');
   const [locations, setLocations] = useState<Location[]>([]);
+  const [generatingPDF, setGeneratingPDF] = useState<boolean>(false);
   const { toast } = useToast();
 
   // Fetch attendances and locations on component mount
@@ -145,246 +134,197 @@ const AttendanceReports: React.FC = () => {
     return `${hours}h ${minutes}m`;
   };
 
-  // State for PDF generation
-  const [generatingPDF, setGeneratingPDF] = useState<boolean>(false);
-  const [pdfData, setPdfData] = useState<any>(null);
-  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [selectedDateRange, setSelectedDateRange] = useState<{start: Date, end: Date}>({
-    start: new Date(new Date().setDate(new Date().getDate() - 30)),
-    end: new Date()
-  });
-  const [showPdfDialog, setShowPdfDialog] = useState<boolean>(false);
-
-  // This function is no longer needed as we're replacing it with PDF export
-
-  // Generate PDF data
-  const generatePDFData = async () => {
+  // Generate and open PDF report
+  const generatePDFReport = async () => {
     try {
       setGeneratingPDF(true);
       
+      // Get the date range for the report (last 30 days by default)
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 30);
+      
+      // Fetch the data for the report
       const response = await fetch('/api/attendance/generate-pdf', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: selectedUserId || undefined,
-          startDate: selectedDateRange.start.toISOString(),
-          endDate: selectedDateRange.end.toISOString(),
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
           includeDetails: true,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate PDF data');
+        throw new Error(errorData.error || 'Failed to generate report data');
       }
 
-      const data = await response.json();
-      setPdfData(data);
-      setShowPdfDialog(true);
+      const reportData = await response.json();
+      
+      // Generate PDF using jsPDF and jspdf-autotable
+      const generatePDF = async () => {
+        const { default: jsPDF } = await import('jspdf');
+        await import('jspdf-autotable');
+        
+        // Create a new PDF document
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+        
+        // Add header with icon and title
+        doc.setFillColor(41, 98, 255); // Primary blue color
+        doc.rect(0, 0, 210, 25, 'F');
+        
+        // Add title with icon
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.setTextColor(255, 255, 255);
+        doc.text('📊 Employee Attendance Report', 105, 15, { align: 'center' });
+        
+        // Add period information
+        doc.setFontSize(10);
+        doc.text(`Period: ${format(startDate, 'MMM d, yyyy')} - ${format(endDate, 'MMM d, yyyy')}`, 105, 22, { align: 'center' });
+        
+        // Prepare table data with the requested structure: Employee | Location | Check In | Check Out | Duration | Status
+        const tableColumn = ["Employee", "Location", "Check In", "Check Out", "Duration", "Status"];
+        const tableRows = reportData.attendances.map((att: any) => [
+          att.employee,
+          att.location,
+          att.checkIn,
+          att.checkOut,
+          att.duration,
+          att.status
+        ]);
+        
+        // Add the table
+        (doc as any).autoTable({
+          head: [tableColumn],
+          body: tableRows,
+          startY: 35,
+          theme: 'grid',
+          styles: { fontSize: 9, cellPadding: 3 },
+          headStyles: { 
+            fillColor: [41, 98, 255], 
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+          },
+          columnStyles: {
+            0: { cellWidth: 35 }, // Employee
+            1: { cellWidth: 30 }, // Location
+            2: { cellWidth: 30 }, // Check In
+            3: { cellWidth: 30 }, // Check Out
+            4: { cellWidth: 25 }, // Duration
+            5: { // Status column
+              cellWidth: 25,
+              cellCallback: function(cell: any, data: any) {
+                if (data.raw[5] === 'PRESENT') {
+                  cell.styles.textColor = [0, 128, 0]; // Green for present
+                } else if (data.raw[5] === 'LATE') {
+                  cell.styles.textColor = [255, 165, 0]; // Orange for late
+                } else if (data.raw[5] === 'ABSENT') {
+                  cell.styles.textColor = [255, 0, 0]; // Red for absent
+                }
+              }
+            }
+          },
+          alternateRowStyles: {
+            fillColor: [245, 245, 245]
+          },
+          didDrawPage: function(data: any) {
+            // Add page number at the bottom of each page
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Page ${data.pageNumber} of ${data.pageCount}`, 180, 287);
+            
+            // Add header to each page after the first page
+            if (data.pageNumber > 1) {
+              doc.setFillColor(41, 98, 255);
+              doc.rect(0, 0, 210, 25, 'F');
+              
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(16);
+              doc.setTextColor(255, 255, 255);
+              doc.text('📊 Employee Attendance Report', 105, 15, { align: 'center' });
+              
+              doc.setFontSize(10);
+              doc.text(`Period: ${format(startDate, 'MMM d, yyyy')} - ${format(endDate, 'MMM d, yyyy')}`, 105, 22, { align: 'center' });
+            }
+          }
+        });
+        
+        // Add footer
+        doc.setFillColor(245, 245, 245);
+        doc.rect(0, 277, 210, 20, 'F');
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Generated at: ${format(new Date(), 'MMM d, yyyy h:mm a')}`, 10, 283);
+        doc.text(`Generated by: ${reportData.generatedBy || 'System'}`, 10, 288);
+        
+        // Generate a blob from the PDF
+        const pdfBlob = doc.output('blob');
+        
+        // Create a URL for the blob
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        
+        // Open the PDF in a new tab
+        window.open(pdfUrl, '_blank');
+        
+        // Create a download link for the PDF
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = `Attendance_Report_${format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`;
+        
+        // Store the URL for potential sharing
+        setPdfUrl(pdfUrl);
+        setPdfBlob(pdfBlob);
+        
+        toast({
+          title: 'Success',
+          description: 'Attendance report generated successfully',
+        });
+      };
+      
+      // Generate the PDF
+      await generatePDF();
+      
     } catch (error: any) {
-      console.error('Error generating PDF data:', error);
+      console.error('Error generating PDF report:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: error.message || 'Failed to generate PDF data',
+        description: error.message || 'Failed to generate PDF report',
       });
     } finally {
       setGeneratingPDF(false);
     }
   };
 
-  // Generate and open PDF in new tab
-  const generatePDF = () => {
-    if (!pdfData) return;
-    
-    // Create a proper PDF using jsPDF
-    import('jspdf').then(({ default: jsPDF }) => {
-      import('jspdf-autotable').then(() => {
-        try {
-          // Create a new PDF document
-          const doc = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: 'a4'
-          });
-          
-          // Add header with icon and title
-          doc.setFillColor(41, 98, 255); // Primary blue color
-          doc.rect(0, 0, 30, 30, 'F');
-          
-          // Add title with icon (using Unicode character)
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(20);
-          doc.setTextColor(255, 255, 255);
-          doc.text('📊', 15, 15, { align: 'center' });
-          
-          // Add title text
-          doc.setFillColor(240, 240, 240);
-          doc.rect(30, 0, 180, 30, 'F');
-          doc.setTextColor(41, 98, 255);
-          doc.text('Employee Attendance Report', 105, 15, { align: 'center' });
-          
-          // Add report period
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(10);
-          doc.setTextColor(100, 100, 100);
-          doc.text(`Period: ${pdfData.summary.period}`, 105, 22, { align: 'center' });
-          
-          // Add the table with the requested structure
-          if (pdfData.attendances.length > 0) {
-            // Prepare table data with the requested structure
-            const tableColumn = ["Employee", "Location", "Check In", "Check Out", "Duration", "Status"];
-            const tableRows = pdfData.attendances.map((att: any) => [
-              att.employee,
-              att.location,
-              att.checkIn,
-              att.checkOut,
-              att.duration,
-              att.status
-            ]);
-            
-            // Add the table with the specified structure
-            (doc as any).autoTable({
-              head: [tableColumn],
-              body: tableRows,
-              startY: 40,
-              theme: 'grid',
-              styles: { fontSize: 10, cellPadding: 5 },
-              headStyles: { 
-                fillColor: [41, 98, 255], 
-                textColor: [255, 255, 255],
-                fontStyle: 'bold'
-              },
-              columnStyles: {
-                0: { cellWidth: 35 }, // Employee
-                1: { cellWidth: 30 }, // Location
-                2: { cellWidth: 35 }, // Check In
-                3: { cellWidth: 35 }, // Check Out
-                4: { cellWidth: 25 }, // Duration
-                5: { // Status column
-                  cellWidth: 25,
-                  cellCallback: function(cell: any, data: any) {
-                    if (data.raw[5] === 'PRESENT') {
-                      cell.styles.textColor = [0, 128, 0]; // Green for present
-                    } else if (data.raw[5] === 'LATE') {
-                      cell.styles.textColor = [255, 165, 0]; // Orange for late
-                    } else if (data.raw[5] === 'ABSENT') {
-                      cell.styles.textColor = [255, 0, 0]; // Red for absent
-                    }
-                  }
-                }
-              },
-              alternateRowStyles: {
-                fillColor: [245, 245, 245]
-              },
-              didDrawPage: function(data: any) {
-                // Add page number at the bottom of each page
-                doc.setFont('helvetica', 'italic');
-                doc.setFontSize(8);
-                doc.text(`Page ${data.pageNumber} of ${data.pageCount}`, 180, 287);
-                
-                // Add header to each page
-                if (data.pageNumber > 1) {
-                  // Add header with icon and title
-                  doc.setFillColor(41, 98, 255); // Primary blue color
-                  doc.rect(0, 0, 30, 30, 'F');
-                  
-                  // Add title with icon (using Unicode character)
-                  doc.setFont('helvetica', 'bold');
-                  doc.setFontSize(20);
-                  doc.setTextColor(255, 255, 255);
-                  doc.text('📊', 15, 15, { align: 'center' });
-                  
-                  // Add title text
-                  doc.setFillColor(240, 240, 240);
-                  doc.rect(30, 0, 180, 30, 'F');
-                  doc.setTextColor(41, 98, 255);
-                  doc.text('Employee Attendance Report', 105, 15, { align: 'center' });
-                  
-                  // Add report period
-                  doc.setFont('helvetica', 'normal');
-                  doc.setFontSize(10);
-                  doc.setTextColor(100, 100, 100);
-                  doc.text(`Period: ${pdfData.summary.period}`, 105, 22, { align: 'center' });
-                }
-              }
-            });
-          } else {
-            // If no attendance records, show a message
-            doc.setTextColor(0, 0, 0);
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(12);
-            doc.text('No attendance records found for the selected period.', 105, 50, { align: 'center' });
-          }
-          
-          // Add footer
-          doc.setFillColor(240, 240, 240);
-          doc.rect(0, 277, 210, 20, 'F');
-          
-          doc.setFont('helvetica', 'italic');
-          doc.setFontSize(8);
-          doc.setTextColor(100, 100, 100);
-          doc.text(`Generated at: ${pdfData.generatedAt}`, 10, 283);
-          doc.text(`Generated by: ${pdfData.generatedBy}`, 10, 288);
-          
-          // Generate a blob from the PDF
-          const pdfBlob = doc.output('blob');
-          
-          // Create a URL for the blob
-          const pdfUrl = URL.createObjectURL(pdfBlob);
-          
-          // Open the PDF in a new tab
-          window.open(pdfUrl, '_blank');
-          
-          // Store the blob for potential sharing
-          setPdfBlob(pdfBlob);
-          
-          toast({
-            title: 'Success',
-            description: 'Attendance report generated successfully',
-          });
-        } catch (error) {
-          console.error('Error generating PDF:', error);
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Failed to generate PDF. Please try again.',
-          });
-        }
-      });
-    }).catch(error => {
-      console.error('Error loading jsPDF:', error);
+  // State for PDF sharing
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+
+  // Download the generated PDF
+  const downloadPDF = () => {
+    if (!pdfUrl || !pdfBlob) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to load PDF generation library. Please try again.',
+        description: 'No PDF has been generated yet',
       });
-    });
-  };
-  
-  // Download the generated PDF
-  const downloadPDF = () => {
-    if (!pdfBlob) {
-      generatePDF();
       return;
     }
     
-    // Create a download link
-    const url = URL.createObjectURL(pdfBlob);
     const link = document.createElement('a');
-    
-    // Set link properties
-    const employeeName = pdfData?.employeeInfo.name.replace(/\s+/g, '_') || 'employee';
-    const startDateStr = pdfData ? format(parseISO(pdfData.summary.startDate), 'yyyyMMdd') : format(new Date(), 'yyyyMMdd');
-    const endDateStr = pdfData ? format(parseISO(pdfData.summary.endDate), 'yyyyMMdd') : format(new Date(), 'yyyyMMdd');
-    
-    link.href = url;
-    link.download = `Attendance_${employeeName}_${startDateStr}-${endDateStr}.pdf`;
-    
-    // Append to the document, click, and remove
+    link.href = pdfUrl;
+    link.download = `Attendance_Report_${format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -397,64 +337,30 @@ const AttendanceReports: React.FC = () => {
 
   // Share via WhatsApp
   const shareViaWhatsApp = () => {
-    if (!pdfData) {
+    if (!pdfUrl) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Please generate a report first',
+        description: 'No PDF has been generated yet',
       });
       return;
     }
     
-    // Create a more visually structured and informative summary text for WhatsApp
-    const summaryText = `
-📊 *Employee Attendance Report* 📊
-
-👤 *EMPLOYEE DETAILS*
-📝 Name: ${pdfData.employeeInfo.name}
-📧 Email: ${pdfData.employeeInfo.email}
-🏢 Department: ${pdfData.employeeInfo.department}
-👔 Position: ${pdfData.employeeInfo.position}
-
-📈 *ATTENDANCE SUMMARY*
-📅 Period: ${pdfData.summary.period}
-⏱️ Total Working Days: ${pdfData.summary.totalDays}
-
-✅ Present: ${pdfData.summary.presentDays} days
-⚠️ Late: ${pdfData.summary.lateDays} days
-❌ Absent: ${pdfData.summary.absentDays} days
-
-📊 *KEY METRICS*
-🎯 Attendance Rate: ${pdfData.summary.attendanceRate}%
-⏰ Punctuality Rate: ${pdfData.summary.punctualityRate}%
-⌚ Average Work Hours: ${pdfData.summary.averageWorkHours} hours/day
-
-${pdfData.attendances.length > 0 ? `
-📋 *ATTENDANCE DETAILS*
-${pdfData.attendances.slice(0, 3).map((att: any) => 
-  `👤 ${att.employee} | 📍 ${att.location}
-  ⏰ Check In: ${att.checkIn} | ⏱️ Check Out: ${att.checkOut}
-  ⌛ Duration: ${att.duration} | ${att.status === 'PRESENT' ? '✅' : att.status === 'LATE' ? '⚠️' : '❌'} Status: ${att.status}`
-).join('\n\n')}
-${pdfData.attendances.length > 3 ? `\n...and ${pdfData.attendances.length - 3} more records` : ''}` : ''}
-
-🕒 Generated: ${format(new Date(pdfData.generatedAt), 'MMM d, yyyy h:mm a')}
-
-💡 *Note:* This is a summary report. For complete details, please refer to the full PDF report.
-    `.trim();
+    // Create a simple text message for WhatsApp
+    const message = `📊 *Employee Attendance Report*\n\nI'm sharing an attendance report generated on ${format(new Date(), 'MMM d, yyyy h:mm a')}.\n\nPlease check the attached PDF for details.`;
     
-    // Encode the text for a URL
-    const encodedText = encodeURIComponent(summaryText);
+    // Encode the message for a URL
+    const encodedMessage = encodeURIComponent(message);
     
     // Create WhatsApp URL
-    const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
     
     // Open WhatsApp in a new window
     window.open(whatsappUrl, '_blank');
     
     toast({
       title: 'WhatsApp Share',
-      description: 'Attendance report summary ready to share via WhatsApp',
+      description: 'Sharing attendance report via WhatsApp',
     });
   };
 
@@ -506,7 +412,7 @@ ${pdfData.attendances.length > 3 ? `\n...and ${pdfData.attendances.length - 3} m
               <Button 
                 variant="default" 
                 size="sm"
-                onClick={generatePDFData}
+                onClick={generatePDFReport}
                 disabled={generatingPDF}
                 className="flex-1 sm:flex-none"
               >
@@ -517,6 +423,28 @@ ${pdfData.attendances.length > 3 ? `\n...and ${pdfData.attendances.length - 3} m
                 )}
                 Generate Report
               </Button>
+              {pdfUrl && (
+                <>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={downloadPDF}
+                    className="flex-1 sm:flex-none"
+                  >
+                    <FaDownload className="mr-2 h-4 w-4" />
+                    Download
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={shareViaWhatsApp}
+                    className="flex-1 sm:flex-none"
+                  >
+                    <FaWhatsapp className="mr-2 h-4 w-4" />
+                    Share
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -658,204 +586,6 @@ ${pdfData.attendances.length > 3 ? `\n...and ${pdfData.attendances.length - 3} m
           )}
         </CardContent>
       </Card>
-
-      {/* PDF Report Dialog */}
-      <Dialog open={showPdfDialog} onOpenChange={setShowPdfDialog}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Attendance Report</DialogTitle>
-            <DialogDescription>
-              Preview and download the attendance report or share it via WhatsApp
-            </DialogDescription>
-          </DialogHeader>
-          
-          {pdfData && (
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-              {/* Header section with company info */}
-              <div className="bg-primary text-white p-4 rounded-t-md">
-                <h3 className="text-lg font-semibold">{pdfData.companyInfo?.name || 'Employee Management System'}</h3>
-                <p className="text-sm font-medium">ATTENDANCE REPORT</p>
-                <p className="text-xs mt-1">
-                  Period: {format(parseISO(pdfData.summary.startDate || selectedDateRange.start.toISOString()), 'MMM d, yyyy')} to {format(parseISO(pdfData.summary.endDate || selectedDateRange.end.toISOString()), 'MMM d, yyyy')}
-                </p>
-              </div>
-              
-              {/* Employee Information */}
-              <div className="border rounded-md p-4 bg-muted/30">
-                <h4 className="font-medium text-sm uppercase text-primary mb-2">Employee Information</h4>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                  <div>Name: <span className="font-medium">{pdfData.employeeInfo.name}</span></div>
-                  <div>Email: <span className="font-medium">{pdfData.employeeInfo.email}</span></div>
-                  <div>Department: <span className="font-medium">{pdfData.employeeInfo.department}</span></div>
-                  <div>Position: <span className="font-medium">{pdfData.employeeInfo.position}</span></div>
-                  <div>User ID: <span className="font-medium">{pdfData.employeeInfo.employeeId || 'N/A'}</span></div>
-                </div>
-              </div>
-              
-              {/* Attendance Summary */}
-              <div className="border rounded-md p-4 bg-muted/30">
-                <h4 className="font-medium text-sm uppercase text-primary mb-2">Attendance Summary</h4>
-                
-                {/* Attendance Rate Progress Bar */}
-                <div className="mb-4">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm">Attendance Rate:</span>
-                    <span className="text-sm font-bold">{pdfData.summary.attendanceRate}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div 
-                      className={`h-2.5 rounded-full ${
-                        parseFloat(pdfData.summary.attendanceRate) < 70 ? 'bg-red-500' : 
-                        parseFloat(pdfData.summary.attendanceRate) < 80 ? 'bg-orange-500' : 
-                        parseFloat(pdfData.summary.attendanceRate) < 90 ? 'bg-yellow-500' : 
-                        'bg-green-500'
-                      }`} 
-                      style={{ width: `${Math.min(parseFloat(pdfData.summary.attendanceRate), 100)}%` }}
-                    ></div>
-                  </div>
-                  <div className="mt-1 text-xs">
-                    Performance Status: 
-                    <span className={`ml-1 font-medium ${
-                      pdfData.summary.performanceStatus === 'Needs Improvement' ? 'text-red-600' : 
-                      pdfData.summary.performanceStatus === 'Average' ? 'text-orange-600' : 
-                      pdfData.summary.performanceStatus === 'Good' ? 'text-yellow-600' : 
-                      'text-green-600'
-                    }`}>
-                      {pdfData.summary.performanceStatus}
-                    </span>
-                  </div>
-                </div>
-                
-                {/* Attendance Metrics Cards */}
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  <div className="bg-green-50 p-2 rounded-md text-center">
-                    <div className="text-lg font-bold text-green-700">{pdfData.summary.presentDays}</div>
-                    <div className="text-xs text-green-800">Present Days</div>
-                  </div>
-                  <div className="bg-yellow-50 p-2 rounded-md text-center">
-                    <div className="text-lg font-bold text-yellow-700">{pdfData.summary.lateDays}</div>
-                    <div className="text-xs text-yellow-800">Late Days</div>
-                  </div>
-                  <div className="bg-red-50 p-2 rounded-md text-center">
-                    <div className="text-lg font-bold text-red-700">{pdfData.summary.absentDays}</div>
-                    <div className="text-xs text-red-800">Absent Days</div>
-                  </div>
-                </div>
-                
-                {/* Additional Metrics */}
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                  <div>Total Working Days: <span className="font-medium">{pdfData.summary.totalDays}</span></div>
-                  <div>Average Work Hours: <span className="font-medium">{pdfData.summary.averageWorkHours} hours/day</span></div>
-                  <div>Punctuality Rate: <span className="font-medium">{pdfData.summary.punctualityRate}%</span></div>
-                  <div>Punctuality Status: 
-                    <span className={`ml-1 font-medium ${
-                      pdfData.summary.punctualityStatus === 'Needs Improvement' ? 'text-red-600' : 
-                      pdfData.summary.punctualityStatus === 'Average' ? 'text-orange-600' : 
-                      pdfData.summary.punctualityStatus === 'Good' ? 'text-yellow-600' : 
-                      'text-green-600'
-                    }`}>
-                      {pdfData.summary.punctualityStatus}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Attendance Details with the requested structure */}
-              {pdfData.attendances.length > 0 && (
-                <div className="border rounded-md p-4 bg-muted/30">
-                  <h4 className="font-medium text-sm uppercase text-primary mb-2">Attendance Details</h4>
-                  <div className="text-xs text-muted-foreground mb-2">
-                    Showing {Math.min(pdfData.attendances.length, 5)} of {pdfData.attendances.length} records
-                  </div>
-                  <div className="border rounded-md overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-primary text-white">
-                        <tr>
-                          <th className="p-2 text-left">Employee</th>
-                          <th className="p-2 text-left">Location</th>
-                          <th className="p-2 text-left">Check In</th>
-                          <th className="p-2 text-left">Check Out</th>
-                          <th className="p-2 text-left">Duration</th>
-                          <th className="p-2 text-left">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pdfData.attendances.slice(0, 5).map((att: any, index: number) => (
-                          <tr key={index} className={index % 2 === 0 ? "border-t" : "border-t bg-muted/20"}>
-                            <td className="p-2">{att.employee || pdfData.employeeInfo.name}</td>
-                            <td className="p-2">{att.location}</td>
-                            <td className="p-2">{att.checkIn}</td>
-                            <td className="p-2">{att.checkOut}</td>
-                            <td className="p-2">{att.duration}</td>
-                            <td className="p-2">
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                att.status === 'PRESENT' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : att.status === 'LATE' 
-                                    ? 'bg-yellow-100 text-yellow-800' 
-                                    : att.status === 'ABSENT'
-                                      ? 'bg-red-100 text-red-800'
-                                      : 'bg-blue-100 text-blue-800'
-                              }`}>
-                                {att.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-              
-              {/* Footer */}
-              <div className="bg-muted/30 p-3 rounded-b-md text-xs text-muted-foreground">
-                <div className="flex flex-col sm:flex-row sm:justify-between">
-                  <div>
-                    Generated at: {pdfData.generatedAt} • Generated by: {pdfData.generatedBy}
-                  </div>
-                  <div>
-                    {pdfData.companyInfo?.contact} • {pdfData.companyInfo?.website}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowPdfDialog(false)}
-              className="sm:order-1"
-            >
-              Close
-            </Button>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <Button 
-                onClick={generatePDF}
-                className="flex-1 sm:flex-none"
-              >
-                <FaFilePdf className="mr-2 h-4 w-4" />
-                View Report
-              </Button>
-              <Button 
-                onClick={downloadPDF}
-                className="flex-1 sm:flex-none"
-              >
-                <FaDownload className="mr-2 h-4 w-4" />
-                Download
-              </Button>
-              <Button 
-                onClick={shareViaWhatsApp}
-                className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700"
-              >
-                <FaWhatsapp className="mr-2 h-4 w-4" />
-                Share via WhatsApp
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
