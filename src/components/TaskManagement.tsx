@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   Card, 
@@ -47,7 +47,18 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { CalendarIcon, CheckIcon, XIcon, ClockIcon, FileTextIcon, DownloadIcon, Share2Icon } from 'lucide-react';
+import { 
+  CalendarIcon, 
+  CheckIcon, 
+  XIcon, 
+  ClockIcon, 
+  FileTextIcon, 
+  DownloadIcon, 
+  Share2Icon,
+  MessageSquareIcon,
+  SendIcon,
+  UserIcon
+} from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 interface User {
@@ -55,6 +66,7 @@ interface User {
   firstName: string | null;
   lastName: string | null;
   email: string;
+  role?: string;
 }
 
 interface Task {
@@ -64,6 +76,7 @@ interface Task {
   assignedToId: string;
   assignedById: string;
   assignedTo: User;
+  assignedBy?: User;
   startDate: string;
   deadline: string;
   duration: number;
@@ -73,6 +86,15 @@ interface Task {
   rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+interface TaskMessage {
+  id: string;
+  taskId: string;
+  userId: string;
+  user: User;
+  message: string;
+  createdAt: string;
 }
 
 export default function TaskManagement() {
@@ -86,7 +108,11 @@ export default function TaskManagement() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [isChatDialogOpen, setIsChatDialogOpen] = useState(false);
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
+  const [messages, setMessages] = useState<TaskMessage[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const [taskStats, setTaskStats] = useState({
     total: 0,
     assigned: 0,
@@ -123,6 +149,13 @@ export default function TaskManagement() {
   useEffect(() => {
     updateTaskStats();
   }, [tasks]);
+  
+  // Scroll chat to bottom when new messages arrive
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   // Fetch tasks with optional filters
   const fetchTasks = async (employeeId?: string, status?: string) => {
@@ -288,6 +321,74 @@ export default function TaskManagement() {
       toast({
         title: 'Error',
         description: 'Failed to load task details. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  // Open chat dialog for a task
+  const openChatDialog = async (task: Task) => {
+    setCurrentTask(task);
+    setNewMessage('');
+    setIsChatDialogOpen(true);
+    
+    // Fetch messages for this task
+    await fetchMessages(task.id);
+  };
+
+  // Fetch messages for a task
+  const fetchMessages = async (taskId: string) => {
+    try {
+      const response = await fetch(`/api/tasks/messages?taskId=${taskId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch messages');
+      }
+      
+      const data = await response.json();
+      setMessages(data);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load messages. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Send a new message
+  const sendMessage = async () => {
+    if (!currentTask || !newMessage.trim()) return;
+    
+    try {
+      const response = await fetch('/api/tasks/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          taskId: currentTask.id,
+          message: newMessage,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+      
+      const data = await response.json();
+      
+      // Add new message to the list
+      setMessages([...messages, data]);
+      
+      // Clear input
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send message. Please try again.',
         variant: 'destructive',
       });
     }
@@ -872,6 +973,9 @@ export default function TaskManagement() {
                         <Button variant="outline" size="sm" onClick={() => viewTask(task.id)}>
                           View
                         </Button>
+                        <Button variant="outline" size="sm" onClick={() => openChatDialog(task)}>
+                          <MessageSquareIcon className="h-4 w-4" />
+                        </Button>
                         {task.status === 'COMPLETED' && (
                           <Button variant="default" size="sm" onClick={() => openReviewDialog(task)}>
                             Review
@@ -1122,6 +1226,83 @@ export default function TaskManagement() {
                 Approve
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Chat Dialog */}
+      {currentTask && (
+        <Dialog open={isChatDialogOpen} onOpenChange={setIsChatDialogOpen}>
+          <DialogContent className="sm:max-w-[600px] h-[80vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Task Chat</DialogTitle>
+              <DialogDescription>
+                Chat with {currentTask.assignedTo.firstName} {currentTask.assignedTo.lastName} about this task
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="bg-muted/50 p-3 rounded-md mb-4">
+                <h4 className="font-semibold">{currentTask.title}</h4>
+                <p className="text-sm text-muted-foreground">
+                  Status: {currentTask.status}
+                </p>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto pr-4" ref={chatScrollRef}>
+                <div className="space-y-4">
+                  {messages.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      <MessageSquareIcon className="mx-auto h-8 w-8 mb-2 opacity-50" />
+                      <p>No messages yet. Start the conversation!</p>
+                    </div>
+                  ) : (
+                    messages.map((msg) => (
+                      <div 
+                        key={msg.id} 
+                        className={`flex ${msg.userId === user?.id ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div className={`flex gap-2 max-w-[80%] ${msg.userId === user?.id ? 'flex-row-reverse' : 'flex-row'}`}>
+                          <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
+                            {msg.user.firstName?.[0] || msg.user.email[0]}
+                          </div>
+                          <div>
+                            <div className={`rounded-lg px-3 py-2 ${
+                              msg.userId === user?.id 
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'bg-muted'
+                            }`}>
+                              <p className="text-sm">{msg.message}</p>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {' • '}
+                              {msg.user.firstName} {msg.user.lastName}
+                              {msg.user.role === 'ADMIN' ? ' (Admin)' : ' (Employee)'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Input
+                placeholder="Type your message..."
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
+              />
+              <Button onClick={sendMessage} disabled={!newMessage.trim()}>
+                <SendIcon className="h-4 w-4" />
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       )}

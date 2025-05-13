@@ -100,6 +100,8 @@ export default function EmployeeTaskDashboard() {
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState<'user' | 'environment'>('environment');
+  const [availableCameras, setAvailableCameras] = useState<boolean>(false);
   const [messages, setMessages] = useState<TaskMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [taskStats, setTaskStats] = useState({
@@ -239,13 +241,27 @@ export default function EmployeeTaskDashboard() {
     }, 500);
   };
 
+  // Check for multiple cameras
+  const checkForCameras = async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      setAvailableCameras(videoDevices.length > 1);
+    } catch (error) {
+      console.error('Error checking for cameras:', error);
+      setAvailableCameras(false);
+    }
+  };
+
   // Start camera for proof capture
   const startCamera = async () => {
     try {
       if (!videoRef.current) return;
       
+      await checkForCameras();
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
+        video: { facingMode: cameraFacingMode } 
       });
       
       videoRef.current.srcObject = stream;
@@ -258,6 +274,20 @@ export default function EmployeeTaskDashboard() {
         variant: 'destructive',
       });
     }
+  };
+  
+  // Switch camera between front and back
+  const switchCamera = async () => {
+    // Stop current camera
+    stopCamera();
+    
+    // Toggle camera mode
+    setCameraFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
+    
+    // Small delay to ensure camera is fully stopped
+    setTimeout(() => {
+      startCamera();
+    }, 300);
   };
 
   // Stop camera
@@ -771,12 +801,39 @@ export default function EmployeeTaskDashboard() {
               
               <div className="relative aspect-video bg-black rounded-md overflow-hidden">
                 {isCapturing && !capturedImage && (
-                  <video 
-                    ref={videoRef} 
-                    autoPlay 
-                    playsInline 
-                    className="w-full h-full object-cover"
-                  />
+                  <>
+                    <video 
+                      ref={videoRef} 
+                      autoPlay 
+                      playsInline 
+                      className="w-full h-full object-cover"
+                    />
+                    {availableCameras && (
+                      <Button 
+                        size="sm" 
+                        variant="secondary" 
+                        className="absolute top-2 right-2 rounded-full p-2 h-10 w-10"
+                        onClick={switchCamera}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M16 3h5v5"></path>
+                          <path d="M8 3H3v5"></path>
+                          <path d="M3 16v5h5"></path>
+                          <path d="M16 21h5v-5"></path>
+                          <path d="M21 16V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v8"></path>
+                        </svg>
+                      </Button>
+                    )}
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+                      <Button 
+                        size="lg" 
+                        className="rounded-full h-16 w-16 bg-white text-primary hover:bg-gray-100"
+                        onClick={captureImage}
+                      >
+                        <CameraIcon className="h-8 w-8" />
+                      </Button>
+                    </div>
+                  </>
                 )}
                 {capturedImage && (
                   <img 
@@ -789,12 +846,6 @@ export default function EmployeeTaskDashboard() {
               </div>
               
               <div className="flex justify-center gap-4">
-                {isCapturing && !capturedImage && (
-                  <Button onClick={captureImage}>
-                    <CameraIcon className="mr-2 h-4 w-4" />
-                    Capture Photo
-                  </Button>
-                )}
                 {capturedImage && (
                   <>
                     <Button variant="outline" onClick={retakePhoto}>
@@ -805,6 +856,12 @@ export default function EmployeeTaskDashboard() {
                       Submit Proof
                     </Button>
                   </>
+                )}
+                {!isCapturing && !capturedImage && (
+                  <Button onClick={startCamera}>
+                    <CameraIcon className="mr-2 h-4 w-4" />
+                    Start Camera
+                  </Button>
                 )}
               </div>
             </div>
