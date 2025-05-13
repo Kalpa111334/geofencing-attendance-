@@ -139,27 +139,67 @@ const AttendanceReports: React.FC = () => {
     try {
       setGeneratingPDF(true);
       
-      // Get the date range for the report (last 30 days by default)
+      // Get the date range based on the selected filter
       const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 30);
+      let startDate = new Date();
+      
+      // Determine date range based on selected filter
+      if (dateFilter === 'today') {
+        // Just today
+        startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
+      } else if (dateFilter === 'yesterday') {
+        // Just yesterday
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - 1);
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setDate(endDate.getDate() - 1);
+        endDate.setHours(23, 59, 59, 999);
+      } else if (dateFilter === 'thisWeek') {
+        // This week (starting from Sunday or Monday depending on locale)
+        const day = startDate.getDay();
+        const diff = startDate.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+        startDate = new Date(startDate.setDate(diff));
+        startDate.setHours(0, 0, 0, 0);
+      } else if (dateFilter === 'thisMonth') {
+        // This month
+        startDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+      } else {
+        // Default to last 30 days
+        startDate.setDate(startDate.getDate() - 30);
+      }
       
       console.log('Generating PDF report for period:', {
         startDate: startDate.toISOString(),
-        endDate: endDate.toISOString()
+        endDate: endDate.toISOString(),
+        status: statusFilter,
+        location: locationFilter
       });
       
-      // Fetch the data for the report
+      // Prepare request body with filters
+      const requestBody: any = {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        includeDetails: true,
+      };
+      
+      // Add location filter if specific location is selected
+      if (locationFilter !== 'ALL') {
+        requestBody.locationId = locationFilter;
+      }
+      
+      // Add status filter if specific status is selected
+      if (statusFilter !== 'ALL') {
+        requestBody.status = statusFilter;
+      }
+      
+      // Fetch the data for the report with filters
       const response = await fetch('/api/attendance/generate-pdf', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-          includeDetails: true,
-        }),
+        body: JSON.stringify(requestBody),
         credentials: 'include', // Include cookies for authentication
       });
 
@@ -197,9 +237,30 @@ const AttendanceReports: React.FC = () => {
         doc.setTextColor(255, 255, 255);
         doc.text('📊 Employee Attendance Report', 105, 15, { align: 'center' });
         
-        // Add period information
+        // Add period and filter information
         doc.setFontSize(10);
         doc.text(`Period: ${format(startDate, 'MMM d, yyyy')} - ${format(endDate, 'MMM d, yyyy')}`, 105, 22, { align: 'center' });
+        
+        // Add filter information below the title
+        let filterText = '';
+        if (statusFilter !== 'ALL') {
+          filterText += `Status: ${statusFilter} | `;
+        }
+        if (locationFilter !== 'ALL') {
+          const locationName = locations.find(loc => loc.id === locationFilter)?.name || locationFilter;
+          filterText += `Location: ${locationName} | `;
+        }
+        
+        // Remove trailing separator if exists
+        if (filterText.endsWith(' | ')) {
+          filterText = filterText.slice(0, -3);
+        }
+        
+        // Only display filter text if filters are applied
+        if (filterText) {
+          doc.setFontSize(8);
+          doc.text(`Filters: ${filterText}`, 105, 28, { align: 'center' });
+        }
         
         // Debug the report data
         console.log('Report data received:', reportData);
@@ -291,6 +352,12 @@ const AttendanceReports: React.FC = () => {
               
               doc.setFontSize(10);
               doc.text(`Period: ${format(startDate, 'MMM d, yyyy')} - ${format(endDate, 'MMM d, yyyy')}`, 105, 22, { align: 'center' });
+              
+              // Add filter information on subsequent pages too
+              if (filterText) {
+                doc.setFontSize(8);
+                doc.text(`Filters: ${filterText}`, 105, 28, { align: 'center' });
+              }
             }
           }
         });
@@ -314,10 +381,10 @@ const AttendanceReports: React.FC = () => {
         // Open the PDF in a new tab
         window.open(pdfUrl, '_blank');
         
-        // Create a download link for the PDF
+        // Create a download link for the PDF with filtered filename
         const link = document.createElement('a');
         link.href = pdfUrl;
-        link.download = `Attendance_Report_${format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`;
+        link.download = `${generateFilteredFilename()}.pdf`;
         
         // Store the URL for potential sharing
         setPdfUrl(pdfUrl);
@@ -348,6 +415,29 @@ const AttendanceReports: React.FC = () => {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
 
+  // Generate a filename with filter information
+  const generateFilteredFilename = () => {
+    let filename = `Attendance_Report_${format(new Date(), 'yyyyMMdd_HHmmss')}`;
+    
+    // Add status to filename if filtered
+    if (statusFilter !== 'ALL') {
+      filename += `_${statusFilter}`;
+    }
+    
+    // Add location to filename if filtered
+    if (locationFilter !== 'ALL') {
+      const locationName = locations.find(loc => loc.id === locationFilter)?.name || 'Location';
+      filename += `_${locationName.replace(/\s+/g, '_')}`;
+    }
+    
+    // Add date filter to filename
+    if (dateFilter !== 'all') {
+      filename += `_${dateFilter}`;
+    }
+    
+    return filename;
+  };
+
   // Download the generated PDF
   const downloadPDF = () => {
     if (!pdfUrl || !pdfBlob) {
@@ -361,7 +451,7 @@ const AttendanceReports: React.FC = () => {
     
     const link = document.createElement('a');
     link.href = pdfUrl;
-    link.download = `Attendance_Report_${format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`;
+    link.download = `${generateFilteredFilename()}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -383,8 +473,36 @@ const AttendanceReports: React.FC = () => {
       return;
     }
     
-    // Create a simple text message for WhatsApp
-    const message = `📊 *Employee Attendance Report*\n\nI'm sharing an attendance report generated on ${format(new Date(), 'MMM d, yyyy h:mm a')}.\n\nPlease check the attached PDF for details.`;
+    // Create filter information for the message
+    let filterInfo = '';
+    
+    // Add date range info
+    let dateRangeText = 'Last 30 days';
+    if (dateFilter === 'today') {
+      dateRangeText = 'Today';
+    } else if (dateFilter === 'yesterday') {
+      dateRangeText = 'Yesterday';
+    } else if (dateFilter === 'thisWeek') {
+      dateRangeText = 'This Week';
+    } else if (dateFilter === 'thisMonth') {
+      dateRangeText = 'This Month';
+    }
+    
+    filterInfo += `*Period:* ${dateRangeText}\n`;
+    
+    // Add status filter info if not ALL
+    if (statusFilter !== 'ALL') {
+      filterInfo += `*Status:* ${statusFilter}\n`;
+    }
+    
+    // Add location filter info if not ALL
+    if (locationFilter !== 'ALL') {
+      const locationName = locations.find(loc => loc.id === locationFilter)?.name || 'Selected Location';
+      filterInfo += `*Location:* ${locationName}\n`;
+    }
+    
+    // Create a detailed message for WhatsApp with filter information
+    const message = `📊 *Employee Attendance Report*\n\nI'm sharing an attendance report generated on ${format(new Date(), 'MMM d, yyyy h:mm a')}.\n\n${filterInfo}\nPlease check the attached PDF for details.`;
     
     // Encode the message for a URL
     const encodedMessage = encodeURIComponent(message);

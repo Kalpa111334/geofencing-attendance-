@@ -42,7 +42,7 @@ export default async function handler(
   // Handle POST request - Generate attendance PDF data
   if (req.method === 'POST') {
     try {
-      const { userId, startDate, endDate, includeDetails, locationId } = req.body;
+      const { userId, startDate, endDate, includeDetails, locationId, status } = req.body;
 
       // Validate required fields
       if (!startDate || !endDate) {
@@ -76,7 +76,9 @@ export default async function handler(
       console.log('Fetching attendance records for period:', {
         startDate: parsedStartDate.toISOString(),
         endDate: parsedEndDate.toISOString(),
-        userId: targetUserId
+        userId: targetUserId,
+        locationId: locationId || 'ALL',
+        status: status || 'ALL'
       });
 
       // Build the where clause for attendance query
@@ -95,6 +97,11 @@ export default async function handler(
       // Add location filter if provided
       if (locationId) {
         whereClause.locationId = locationId;
+      }
+      
+      // Add status filter if provided
+      if (status) {
+        whereClause.status = status;
       }
 
       // Fetch attendance records
