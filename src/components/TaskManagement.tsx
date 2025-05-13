@@ -758,7 +758,7 @@ export default function TaskManagement() {
             <div className="text-2xl font-bold">{taskStats.completed}</div>
           </CardContent>
         </Card>
-        <Car>
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Approved</CardTitle>
           </CardHeader>
