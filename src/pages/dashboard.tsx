@@ -3,10 +3,11 @@ import { useRouter } from "next/router";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FaUserClock, FaSignOutAlt, FaUser, FaUserEdit, FaCalendarAlt } from "react-icons/fa";
+import { FaUserClock, FaSignOutAlt, FaUser, FaUserEdit, FaCalendarAlt, FaTasks } from "react-icons/fa";
 import AttendanceCheckInOut from "@/components/AttendanceCheckInOut";
 import UserProfile from "@/components/UserProfile";
 import LeaveManagement from "@/components/LeaveManagement";
+import EmployeeTaskDashboard from "@/components/EmployeeTaskDashboard";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -97,6 +98,10 @@ export default function Dashboard() {
                   <FaCalendarAlt className="mr-2 h-4 w-4" />
                   <span>Leave</span>
                 </TabsTrigger>
+                <TabsTrigger value="tasks" className="flex-1 whitespace-nowrap">
+                  <FaTasks className="mr-2 h-4 w-4" />
+                  <span>Tasks</span>
+                </TabsTrigger>
                 <TabsTrigger value="profile" className="flex-1 whitespace-nowrap">
                   <FaUserEdit className="mr-2 h-4 w-4" />
                   <span>Profile</span>
@@ -112,6 +117,10 @@ export default function Dashboard() {
               <LeaveManagement />
             </TabsContent>
             
+            <TabsContent value="tasks" className="space-y-4">
+              <EmployeeTaskDashboard />
+            </TabsContent>
+            
             <TabsContent value="profile" className="space-y-4">
               <UserProfile />
             </TabsContent>
@@ -120,7 +129,7 @@ export default function Dashboard() {
         
         {/* Mobile Bottom Navigation */}
         <div className="fixed bottom-0 left-0 right-0 bg-background border-t sm:hidden z-10 mobile-bottom-nav">
-          <div className="flex justify-around items-center h-16 mobile-no-select">
+          <div className="grid grid-cols-4 h-16 mobile-no-select">
             <Button 
               variant="ghost" 
               className="flex flex-col items-center justify-center h-full w-full rounded-none mobile-touch-feedback haptic-feedback"
@@ -136,6 +145,14 @@ export default function Dashboard() {
             >
               <FaCalendarAlt className="h-5 w-5" />
               <span className="text-xs mt-1">Leave</span>
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="flex flex-col items-center justify-center h-full w-full rounded-none mobile-touch-feedback haptic-feedback"
+              onClick={() => document.querySelector('[data-value="tasks"]')?.click()}
+            >
+              <FaTasks className="h-5 w-5" />
+              <span className="text-xs mt-1">Tasks</span>
             </Button>
             <Button 
               variant="ghost" 

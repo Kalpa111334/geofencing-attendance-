@@ -15,7 +15,8 @@ import {
   FaCalendarAlt,
   FaClock,
   FaCalendarWeek,
-  FaEllipsisH
+  FaEllipsisH,
+  FaTasks
 } from "react-icons/fa";
 import AttendanceCheckInOut from "@/components/AttendanceCheckInOut";
 import LocationManagement from "@/components/LocationManagement";
@@ -26,6 +27,7 @@ import DashboardOverview from "@/components/DashboardOverview";
 import AdminLeaveManagement from "@/components/AdminLeaveManagement";
 import WorkShiftManagement from "@/components/WorkShiftManagement";
 import RosterManagement from "@/components/RosterManagement";
+import TaskManagement from "@/components/TaskManagement";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -108,7 +110,7 @@ export default function AdminDashboard() {
 
           <Tabs defaultValue="overview" className="space-y-4">
             <div className="overflow-x-auto pb-2">
-              <TabsList className="inline-flex min-w-full md:grid md:grid-cols-9 md:w-auto">
+              <TabsList className="inline-flex min-w-full md:grid md:grid-cols-10 md:w-auto">
                 <TabsTrigger value="overview" className="whitespace-nowrap">
                   <FaTachometerAlt className="mr-2 h-4 w-4" />
                   <span className="sm:inline">Overview</span>
@@ -140,6 +142,10 @@ export default function AdminDashboard() {
                 <TabsTrigger value="roster" className="whitespace-nowrap">
                   <FaCalendarWeek className="mr-2 h-4 w-4" />
                   <span className="sm:inline">Roster</span>
+                </TabsTrigger>
+                <TabsTrigger value="tasks" className="whitespace-nowrap">
+                  <FaTasks className="mr-2 h-4 w-4" />
+                  <span className="sm:inline">Tasks</span>
                 </TabsTrigger>
                 <TabsTrigger value="profile" className="whitespace-nowrap">
                   <FaUserEdit className="mr-2 h-4 w-4" />
@@ -178,6 +184,10 @@ export default function AdminDashboard() {
             
             <TabsContent value="roster" className="space-y-4">
               <RosterManagement />
+            </TabsContent>
+            
+            <TabsContent value="tasks" className="space-y-4">
+              <TaskManagement />
             </TabsContent>
             
             <TabsContent value="profile" className="space-y-4">
@@ -270,6 +280,14 @@ export default function AdminDashboard() {
               >
                 <FaCalendarWeek className="h-5 w-5" />
                 <span className="text-xs mt-1">Roster</span>
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="flex flex-col items-center justify-center p-2 h-20 mobile-touch-feedback haptic-feedback"
+                onClick={() => document.querySelector('[data-value="tasks"]')?.click()}
+              >
+                <FaTasks className="h-5 w-5" />
+                <span className="text-xs mt-1">Tasks</span>
               </Button>
               <Button 
                 variant="ghost" 
