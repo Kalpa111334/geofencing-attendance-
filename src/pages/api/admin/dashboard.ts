@@ -37,6 +37,18 @@ export default async function handler(
       const totalLocations = await prisma.location.count();
 
       // Get active users today (users who have checked in)
+      // Using a more reliable method to count distinct users with attendance today
+      const activeUsersResult = await prisma.$queryRaw`
+        SELECT COUNT(DISTINCT "userId") 
+        FROM "Attendance" 
+        WHERE "checkInTime" >= ${todayStart} 
+        AND "checkInTime" <= ${todayEnd}
+      `;
+      
+      // Extract the count from the result (it comes as a BigInt)
+      const activeUsersCount = Number(activeUsersResult[0].count);
+      
+      // For debugging, also get the actual list of active users
       const activeUsers = await prisma.attendance.findMany({
         where: {
           checkInTime: {
@@ -46,9 +58,19 @@ export default async function handler(
         },
         select: {
           userId: true,
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          }
         },
         distinct: ['userId'],
       });
+      
+      console.log(`Active users today: ${activeUsersCount}, Users found: ${activeUsers.length}`);
+      console.log('Active user IDs:', activeUsers.map(u => u.userId));
 
       // Get all work shifts for today
       const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -159,7 +181,7 @@ export default async function handler(
       // Format the response
       const dashboardStats = {
         totalUsers,
-        activeUsers: activeUsers.length,
+        activeUsers: activeUsersCount,
         totalLocations,
         todayAttendance: {
           present: presentCount,

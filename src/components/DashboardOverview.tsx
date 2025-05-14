@@ -93,7 +93,24 @@ const DashboardOverview: React.FC = () => {
         )
         .subscribe();
       
-      console.log('Real-time subscription to attendance changes set up');
+      // Also subscribe to user table changes (in case new users are added)
+      supabase
+        .channel('user-changes')
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'User' 
+          }, 
+          (payload) => {
+            console.log('Real-time user update received:', payload);
+            // Refresh dashboard data when user data changes
+            fetchDashboardStats();
+          }
+        )
+        .subscribe();
+      
+      console.log('Real-time subscriptions set up');
     } catch (error) {
       console.error('Error setting up real-time subscription:', error);
     }
@@ -115,8 +132,13 @@ const DashboardOverview: React.FC = () => {
       // Make the API request with the user ID in the authorization header
       const response = await fetch('/api/admin/dashboard', {
         headers: {
-          'Authorization': user.id
-        }
+          'Authorization': user.id,
+          // Add cache busting parameter to prevent caching
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        // Add timestamp to force fresh data
+        cache: 'no-store'
       });
       
       if (!response.ok) {
@@ -124,6 +146,7 @@ const DashboardOverview: React.FC = () => {
       }
       
       const data = await response.json();
+      console.log('Dashboard stats fetched:', data);
       setStats(data);
     } catch (error) {
       console.error('Error fetching dashboard statistics:', error);

@@ -174,8 +174,17 @@ export default async function handler(
           },
           include: {
             location: true,
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
           }
         });
+        
+        console.log(`User ${user.id} checked in at location ${locationId} at ${now.toISOString()}`);
 
         // Send check-in notification
         try {
@@ -222,8 +231,17 @@ export default async function handler(
           },
           include: {
             location: true,
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
           }
         });
+        
+        console.log(`User ${user.id} checked out from location ${openAttendance.locationId} at ${now.toISOString()}`);
 
         // Calculate duration in minutes
         const checkInTime = new Date(updatedAttendance.checkInTime);
