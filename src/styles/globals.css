@@ -3,6 +3,62 @@
 @tailwind utilities;
 @import './mobile-enhancements.css';
 
+/* Global responsive styles */
+html {
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Responsive table styles */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Responsive form styles */
+input, select, textarea {
+  font-size: 16px !important; /* Prevents iOS zoom on focus */
+}
+
+/* Responsive image styles */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Responsive dialog styles */
+@media (max-width: 640px) {
+  [role="dialog"] {
+    padding: 0 !important;
+  }
+}
+
+/* Responsive grid layouts */
+.responsive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+/* Responsive flex layouts */
+.responsive-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.responsive-flex > * {
+  flex: 1 1 280px;
+}
+
 :root {
   --mode: light;
 }
