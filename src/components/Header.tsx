@@ -3,10 +3,13 @@ import { useRouter } from 'next/router';
 import { AuthContext } from '@/contexts/AuthContext';
 import Logo from '@/components/Logo';
 import { Button } from "@/components/ui/button";
+import { useTheme } from '@/hooks/useTheme'; // Added
+import { Sun, Moon } from 'lucide-react'; // Added
 
 const Header = () => {
   const { user, initializing, signOut } = useContext(AuthContext);
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme(); // Added
 
   const handleButtonClick = () => {
     if (user && router.pathname === '/dashboard') {
@@ -32,7 +35,11 @@ const Header = () => {
         </div>
         {!initializing && (
           <div className="flex items-center space-x-4">
-            <Button 
+            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+              {theme === 'light' ? <Sun className="h-[1.2rem] w-[1.2rem]" /> : <Moon className="h-[1.2rem] w-[1.2rem]" />}
+              <span className="sr-only">Toggle theme</span>
+            </Button>
+            <Button
               onClick={handleButtonClick}
               variant="default"
               size="default"

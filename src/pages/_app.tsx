@@ -2,6 +2,7 @@ import type { AppProps } from 'next/app'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { NotificationProvider } from '@/contexts/NotificationContext'
 import '../styles/globals.css';
+import { ThemeProvider } from '@/contexts/ThemeContext'; // Add this import
 import '../styles/mobile-enhancements.css';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Toaster } from "@/components/ui/toaster"
@@ -9,24 +10,24 @@ import { useEffect, useState } from 'react';
 import Head from 'next/head';
 
 export default function App({ Component, pageProps }: AppProps) {
-  const [mounted, setMounted] = useState(false);
+  // const [mounted, setMounted] = useState(false); // ThemeProvider now handles this
 
-  useEffect(() => {
-    const root = document.documentElement;
-    const computedStyle = getComputedStyle(root);
-    const colorScheme = computedStyle.getPropertyValue('--mode').trim().replace(/"/g, '');
-    if (colorScheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.add('light');
-    }
-    setMounted(true);
-  }, []);
+  // useEffect(() => { // ThemeProvider now handles this
+  //   const root = document.documentElement;
+  //   const computedStyle = getComputedStyle(root);
+  //   const colorScheme = computedStyle.getPropertyValue('--mode').trim().replace(/"/g, '');
+  //   if (colorScheme === 'dark') {
+  //     document.documentElement.classList.add('dark');
+  //   } else {
+  //     document.documentElement.classList.add('light');
+  //   }
+  //   setMounted(true);
+  // }, []);
 
   // Prevent flash while theme loads
-  if (!mounted) {
-    return null;
-  }
+  // if (!mounted) { // ThemeProvider now handles this
+  //   return null;
+  // }
 
   return (
     <>
@@ -41,14 +42,16 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="apple-touch-fullscreen" content="yes" />
       </Head>
       <div className="min-h-screen mobile-safe-top mobile-safe-bottom">
-        <AuthProvider>
-          <NotificationProvider>
-            <ProtectedRoute>
-              <Component {...pageProps} />
-            </ProtectedRoute>
-            <Toaster />
-          </NotificationProvider>
-        </AuthProvider>
+        <ThemeProvider> {/* Add ThemeProvider here */}
+          <AuthProvider>
+            <NotificationProvider>
+              <ProtectedRoute>
+                <Component {...pageProps} />
+              </ProtectedRoute>
+              <Toaster />
+            </NotificationProvider>
+          </AuthProvider>
+        </ThemeProvider> {/* Close ThemeProvider here */}
       </div>
     </>
   )
